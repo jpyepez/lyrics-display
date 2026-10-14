@@ -12,7 +12,7 @@
 
 ## State
 
-- The Library lives in IndexedDB behind `src/library/library.ts`. Components never touch `indexedDB` directly; they call the store's async functions (`addSong`, `getSong`, `listSongs`).
+- The Library lives in IndexedDB behind `src/library/library.ts`. Components never touch `indexedDB` directly; they call the store's async functions (`addSong`, `getSong`, `listSongs`, `updateSong`, `deleteSong`, `restoreSong`). The Library's own rules live there too: the title sort in `listSongs` and the filter match in `matchesFilter`.
 - App-wide settings live in localStorage behind `src/app/settings.ts` (`usePaperSetting`, `savePaperSetting`); components never touch `localStorage` directly.
 - No global state library. Each view loads what it needs from the Library store in an effect and keeps it in local state; app-wide settings are the exception above, read while rendering.
 - Navigation is the URL hash (`#/`, `#/paste`, `#/settings`, `#/song/<id>`, `#/song/<id>/edit`) via `useRoute()` and `routes` in `src/app/route.ts`, so a reload reopens the same view. Build links with `routes`, never by hand; `navigate` only accepts a `RouteHash`, which only `routes` produces.

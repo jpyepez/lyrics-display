@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react'
 import { navigate, routes } from '../app/route'
 import type { Song } from '../song/song'
-import { deleteSong, listSongs, restoreSong } from './library'
+import { deleteSong, listSongs, matchesFilter, restoreSong } from './library'
 
 /** How long the Undo toast stays after a delete. */
 const UNDO_MS = 5000
-
-/** Whether part of the Song's title or artist matches the filter, ignoring case. */
-function matches(song: Song, filter: string): boolean {
-  const needle = filter.trim().toLowerCase()
-  return song.title.toLowerCase().includes(needle) || song.artist.toLowerCase().includes(needle)
-}
 
 export function LibraryView() {
   const [songs, setSongs] = useState<Song[]>()
@@ -40,7 +34,7 @@ export function LibraryView() {
     setSongs(await listSongs())
   }
 
-  const shown = songs?.filter((song) => matches(song, filter))
+  const shown = songs?.filter((song) => matchesFilter(song, filter))
 
   return (
     <main className="library">
