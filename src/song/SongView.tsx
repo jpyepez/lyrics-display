@@ -8,6 +8,7 @@ import { createDomMeasurer } from './measure'
 import { PrintView } from './PrintView'
 import { stepOverride, type OverrideRange, type OverrideStep } from './override'
 import type { Override, Song } from './song'
+import { useWakeLock } from './wakeLock'
 
 /**
  * Smallest Screen font, the same on desktop and phone: 20px reads from a playing
@@ -103,6 +104,7 @@ export function SongView({ id }: { id: string }) {
   const [saveFailed, setSaveFailed] = useState(false)
   const screenCount = screenFit?.surfaces.length ?? 0
   const [screenIndex, turn] = useScreenIndex(screenCount)
+  useWakeLock()
 
   if (song === undefined) return null
   if (song === null) {

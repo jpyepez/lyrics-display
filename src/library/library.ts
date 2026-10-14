@@ -21,8 +21,23 @@ function openDb(): Promise<IDBDatabase> {
       request.result.createObjectStore(SONGS, { keyPath: 'id' })
     }
     db = settle(request)
+    requestPersistence()
   }
   return db
+}
+
+/**
+ * Asks the browser to keep the Library rather than clear it when space runs low or the site
+ * goes unvisited (Safari, after a week). Once per page load, and only while not yet granted;
+ * a refusal leaves the Library working as before, with export as the backup.
+ */
+function requestPersistence() {
+  const storage = navigator.storage
+  if (!storage?.persist) return
+  storage
+    .persisted()
+    .then((persisted) => persisted || storage.persist())
+    .catch(() => {})
 }
 
 /** Settles once the transaction commits, so a reload right after a write cannot lose it. */
