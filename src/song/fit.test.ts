@@ -296,6 +296,38 @@ describe('fit', () => {
         surfaces: [[song.slice(0, 6)], [song.slice(6, 12)], [song.slice(12)]],
       })
     })
+
+    test('a font size and column count Override together fix both', () => {
+      const [a, b, c] = [stanza('a', 2), stanza('b', 2), stanza('c', 2)]
+
+      // At 30px two 470px columns hold the 150px lines; a and b take 2 + 1 + 2 = 5em = 150px.
+      const result = fit({
+        stanzas: [a, b, c],
+        surface: { kind: 'screen', width: 1000, height: 600 },
+        minFontSize: 20,
+        maxFontSize: 40,
+        measurer: fakeMeasurer,
+        override: { fontSize: 30, columnCount: 2 },
+      })
+
+      expect(result).toEqual({ fontSize: 30, columnCount: 2, surfaces: [[[a, b], [c]]] })
+    })
+
+    test('a Sheet ignores the Override and gets the automatic Fit', () => {
+      const [a, b, c, d, e, f, g, h] = 'abcdefgh'.split('').map((name) => stanza(name, 4))
+
+      // The same Sheet as above: 52px in two columns, whatever the Override asks for.
+      const result = fit({
+        stanzas: [a, b, c, d, e, f, g, h],
+        surface: { kind: 'sheet', width: 700, height: 1000 },
+        minFontSize: 13.33,
+        maxFontSize: 72,
+        measurer: fakeMeasurer,
+        override: { fontSize: 30, columnCount: 3 },
+      })
+
+      expect(result).toEqual({ fontSize: 52, columnCount: 2, surfaces: [[[a, b, c, d], [e, f, g, h]]] })
+    })
   })
 })
 

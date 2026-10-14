@@ -22,7 +22,7 @@ export type FitInput = {
   minFontSize: number
   maxFontSize: number
   measurer: TextMeasurer
-  /** Used for Screens only; a Sheet always gets the automatic Fit. */
+  /** Used for Screens only; a Sheet ignores it and always gets the automatic Fit. */
   override?: Override
 }
 
@@ -55,7 +55,8 @@ export const COLUMN_GAP_EM = 2
  * A Song that does not fit Spills at the fixed font size, or else the minimum, and in the
  * fixed column count, readable or not.
  */
-export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer, override = {} }: FitInput): Fit {
+export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer, ...input }: FitInput): Fit {
+  const override = (surface.kind === 'screen' && input.override) || {}
   const sizes = override.fontSize ? [override.fontSize] : fontSizes(maxFontSize, minFontSize)
   for (const fontSize of sizes) {
     const readable = readableColumnCount(stanzas, surface, fontSize, measurer)
