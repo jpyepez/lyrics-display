@@ -1,7 +1,7 @@
 ---
 slice: 4
 title: Per-Song Override
-status: in-progress
+status: done
 blocked_by: [3]
 parent_prd: lyrics-display-v1
 ---
