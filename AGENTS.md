@@ -6,6 +6,7 @@ A static PWA (Vite + React + TypeScript) for showing song lyrics while playing g
 
 ## Rules
 - Test fixtures, seed data and screenshots use invented placeholder lyrics, never real song lyrics: they are copyrighted and get committed.
+- **Browser verification** closes every ticket and bug fix, before committing: follow [the steps](./docs/browser-verification.md).
 
 ## Deep Context
 IMPORTANT: Before starting a task, identify which of these files are relevant and read them.
