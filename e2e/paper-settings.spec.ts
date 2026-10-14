@@ -17,8 +17,20 @@ async function openSettings(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
 }
 
-/** Each printed page's size in pt, read from the PDF the browser renders with the page's own page size. */
-async function printedPageSizes(page: Page): Promise<[number, number][]> {
+async function choosePaper(page: Page, size: string, orientation: string) {
+  await openSettings(page)
+  await page.getByRole('radio', { name: size }).check()
+  await page.getByRole('radio', { name: orientation }).check()
+}
+
+async function openSong(page: Page, title: string) {
+  await page.goto('/')
+  await page.getByRole('link', { name: new RegExp(title) }).click()
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+}
+
+/** Each Sheet's paper size in pt, read from the PDF the browser renders at the Sheets' own size. */
+async function sheetPaperSizes(page: Page): Promise<[number, number][]> {
   const pdf = (await page.pdf({ preferCSSPageSize: true })).toString('latin1')
   return [...pdf.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])])
 }
@@ -41,7 +53,7 @@ test('paper defaults to A4 portrait', async ({ page }) => {
   await expect(page.getByRole('radio', { name: 'Portrait' })).toBeChecked()
 
   await pasteSong(page, 'Short Song', verses(3))
-  const [[width, height]] = await printedPageSizes(page)
+  const [[width, height]] = await sheetPaperSizes(page)
   // A4 is 210 × 297 mm: 595.3 × 841.9 pt.
   expect(width).toBeCloseTo(595.3, 0)
   expect(height).toBeCloseTo(841.9, 0)
@@ -62,13 +74,37 @@ test('Letter landscape is remembered and the Sheets print on it, with more colum
   await page.getByRole('link', { name: /Long Song/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Long Song' })).toBeVisible()
 
-  const sizes = await printedPageSizes(page)
+  const sizes = await sheetPaperSizes(page)
   expect(sizes.length).toBeGreaterThan(0)
   // Letter is 8.5 × 11 in: on its side, 792 × 612 pt.
   for (const [width, height] of sizes) {
     expect(width).toBeCloseTo(792, 0)
     expect(height).toBeCloseTo(612, 0)
   }
+  expect(await firstSheetColumnCount(page)).toBeGreaterThan(portraitColumns)
+})
+
+test('Letter portrait prints on upright Letter', async ({ page }) => {
+  await choosePaper(page, 'Letter', 'Portrait')
+  await pasteSong(page, 'Short Song', verses(3))
+
+  // Letter is 8.5 × 11 in: 612 × 792 pt.
+  const [[width, height]] = await sheetPaperSizes(page)
+  expect(width).toBeCloseTo(612, 0)
+  expect(height).toBeCloseTo(792, 0)
+})
+
+test('A4 landscape alone gives more columns than A4 portrait', async ({ page }) => {
+  await pasteSong(page, 'Long Song', verses(24))
+  const portraitColumns = await firstSheetColumnCount(page)
+
+  await choosePaper(page, 'A4', 'Landscape')
+  await openSong(page, 'Long Song')
+
+  // A4 on its side: 841.9 × 595.3 pt.
+  const [[width, height]] = await sheetPaperSizes(page)
+  expect(width).toBeCloseTo(841.9, 0)
+  expect(height).toBeCloseTo(595.3, 0)
   expect(await firstSheetColumnCount(page)).toBeGreaterThan(portraitColumns)
 })
 

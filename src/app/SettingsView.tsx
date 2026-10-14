@@ -67,7 +67,6 @@ export function SettingsView() {
           </label>
         ))}
       </fieldset>
-      <p className="hint">Landscape gives more columns on each Sheet.</p>
       {isFirefox && (
         <p className="hint">
           Firefox: if your printout shows the date, the web address or page numbers, untick “Print headers and
