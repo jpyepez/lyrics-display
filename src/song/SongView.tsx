@@ -149,10 +149,19 @@ export function SongView({ id }: { id: string }) {
           <a href={routes.library}>Library</a>
           <h1>{song.title}</h1>
           <p className="artist">{song.artist}</p>
+          {/* One line at most, cut off with an ellipsis, so the Note never takes room from the Lyrics. */}
+          {song.note && (
+            <p role="note" className="note" title={song.note}>
+              {song.note}
+            </p>
+          )}
           {/* Always laid out, so the Screen's height does not depend on whether the Song Spills. */}
           <p role="status" className="screen-indicator" style={screenCount < 2 ? { visibility: 'hidden' } : undefined}>
             {screenIndex + 1}/{screenCount}
           </p>
+          <a href={routes.editSong(song.id)} className="edit-link">
+            Edit
+          </a>
           <button type="button" className="print-button" onClick={onPrintClick}>
             Print
           </button>

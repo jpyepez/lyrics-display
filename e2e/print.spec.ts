@@ -17,6 +17,13 @@ async function printedPageCount(page: Page): Promise<number> {
   return pdf.toString('latin1').match(/\/Type\s*\/Page\b(?!s)/g)?.length ?? 0
 }
 
+async function addNote(page: Page, note: string) {
+  await page.getByRole('link', { name: 'Edit' }).click()
+  await page.getByLabel('Note').fill(note)
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('note')).toHaveText(note)
+}
+
 const sheets = (page: Page) => page.getByRole('region', { name: /^Sheet/ })
 
 /** Each Sheet's Stanzas, as print media lays them out: label, line count, font size and place in the Lyrics box. */
@@ -59,6 +66,8 @@ test.use({ viewport: { width: 1280, height: 800 } })
 
 test('a short Song prints as one Sheet with only its title, artist and Lyrics', async ({ page }) => {
   await pasteSong(page, 'Short Song', verses(3))
+  // The Note is shown in the app and never printed.
+  await addNote(page, 'capo 2, slow intro')
 
   expect(await printedPageCount(page)).toBe(1)
 

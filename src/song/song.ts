@@ -4,6 +4,8 @@ export type Song = {
   artist: string
   /** Raw Lyrics exactly as the user entered them; parsed into Stanzas when shown. */
   lyrics: string
+  /** Private free text shown in the Song view, never printed; absent when there is none. */
+  note?: string
   /** Replaces the automatic Fit on Screens; absent means auto. Sheets never use it. */
   override?: Override
   createdAt: number

@@ -1,4 +1,5 @@
 import { LibraryView } from '../library/LibraryView'
+import { EditSongForm } from '../song/EditSongForm'
 import { PasteSongForm } from '../song/PasteSongForm'
 import { SongView } from '../song/SongView'
 import { useRoute } from './route'
@@ -16,5 +17,7 @@ export function App() {
       return <SettingsView />
     case 'song':
       return <SongView key={route.id} id={route.id} />
+    case 'edit-song':
+      return <EditSongForm key={route.id} id={route.id} />
   }
 }

@@ -1,7 +1,7 @@
 ---
 slice: 7
 title: Edit a Song and add a Note
-status: ready
+status: in-progress
 blocked_by: [1]
 parent_prd: lyrics-display-v1
 ---
