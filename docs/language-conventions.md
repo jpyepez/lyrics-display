@@ -7,7 +7,7 @@
 
 ## Pure functions vs components
 
-- Logic lives in pure, framework-free modules (`lyrics.ts`, and later the Fit engine). Components call them and render the result; no parsing or layout math inside JSX.
+- Logic lives in pure, framework-free modules (`lyrics.ts`, `fit.ts`). Components call them and render the result; no parsing or layout math inside JSX.
 - A Song stores its raw Lyrics string; Stanzas are derived by `parseLyrics` at render time, never stored.
 
 ## State

@@ -52,22 +52,50 @@ main {
   justify-content: flex-end;
 }
 
+/* The Song view fills the viewport: a compact header, then the Screen. */
+main.song {
+  box-sizing: border-box;
+  height: 100dvh;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.song header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 12px;
+  margin-bottom: 12px;
+}
+
 .song header h1 {
   font-size: 1rem;
-  margin: 8px 0 0;
+  margin: 0;
 }
 
 .song header .artist {
   font-size: 0.875rem;
-  margin: 0 0 16px;
+  margin: 0;
 }
 
+.screen {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Gaps between columns and Stanzas come from the Fit engine, inline. */
 .lyrics {
-  font-size: 20px;
+  display: flex;
+  align-items: flex-start;
 }
 
-.stanza {
-  margin-bottom: 1em;
+.column {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .section-label {
