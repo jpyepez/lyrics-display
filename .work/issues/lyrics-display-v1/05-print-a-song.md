@@ -21,3 +21,4 @@ parent_prd: lyrics-display-v1
 - Done in 7bca8ec and the review follow-up. Fit for A4 portrait from 10pt to 24pt; the header's measured height comes off the Sheet, and a long title wraps.
 - Note absence: the Song has no Note until #07. `e2e/print.spec.ts` checks that print media shows exactly the title, the artist and the Lyrics, so a Note that leaks into print will fail it. #07 should add a Note to that test's Song.
 - Manual check still open: the Chrome/Edge print dialog headers/footers and Firefox behaviour need a person at the print dialog. #06 needs the Firefox result for its hint. The headless Chromium PDFs show no headers or footers, at A4 size.
+- 2026-10-15 manual check, Chrome on macOS: the print dialog shows one A4 page with no date, URL or page numbers, and it offers no "Headers and footers" option (the margin is zero). Firefox not checked: no Firefox at hand. #06 decides the Firefox hint without that result.
