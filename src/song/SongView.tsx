@@ -3,6 +3,7 @@ import { routes } from '../app/route'
 import { getSong } from '../library/library'
 import { COLUMN_GAP_EM, fit, STANZA_GAP_EM } from './fit'
 import { parseLyrics } from './lyrics'
+import { clampScreenIndex, keyStep, tapStep } from './navigation'
 import { createDomMeasurer } from './measure'
 import type { Song } from './song'
 
@@ -33,22 +34,17 @@ function useElementSize(): [(element: HTMLElement | null) => void, Size | undefi
   return [setElement, size]
 }
 
-/** Keys that turn the Screen; a Bluetooth page-turner pedal sends one of these. */
-const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown', 'PageDown', ' '])
-const PREVIOUS_KEYS = new Set(['ArrowLeft', 'ArrowUp', 'PageUp'])
-
 /** Moves between `count` Screens by key; the index stays within them when `count` changes. */
 function useScreenIndex(count: number): [number, (step: number) => void] {
   const [wanted, setWanted] = useState(0)
   const turn = useCallback(
-    (step: number) => setWanted((old) => clampIndex(clampIndex(old, count) + step, count)),
+    (step: number) => setWanted((old) => clampScreenIndex(clampScreenIndex(old, count) + step, count)),
     [count],
   )
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
-      const step = NEXT_KEYS.has(event.key) ? 1 : PREVIOUS_KEYS.has(event.key) ? -1 : 0
+      const step = keyStep(event)
       if (!step) return
       event.preventDefault()
       turn(step)
@@ -57,11 +53,7 @@ function useScreenIndex(count: number): [number, (step: number) => void] {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [turn])
 
-  return [clampIndex(wanted, count), turn]
-}
-
-function clampIndex(index: number, count: number): number {
-  return Math.min(Math.max(0, index), Math.max(0, count - 1))
+  return [clampScreenIndex(wanted, count), turn]
 }
 
 export function SongView({ id }: { id: string }) {
@@ -87,7 +79,7 @@ export function SongView({ id }: { id: string }) {
       }),
     [stanzas, screen, measurer],
   )
-  const screenCount = screenFit?.screens.length ?? 0
+  const screenCount = screenFit?.surfaces.length ?? 0
   const [screenIndex, turn] = useScreenIndex(screenCount)
 
   if (song === undefined) return null
@@ -103,10 +95,8 @@ export function SongView({ id }: { id: string }) {
   const lyricsStyle: CSSProperties = screenFit ? { fontSize: screenFit.fontSize, gap: `${COLUMN_GAP_EM}em` } : {}
   const columnStyle: CSSProperties = { gap: `${STANZA_GAP_EM}em` }
 
-  /** A tap on the right half shows the next Screen, on the left half the previous one. */
   function onScreenClick(event: MouseEvent<HTMLElement>) {
-    const box = event.currentTarget.getBoundingClientRect()
-    turn(event.clientX >= box.left + box.width / 2 ? 1 : -1)
+    turn(tapStep(event.clientX, event.currentTarget.getBoundingClientRect()))
   }
 
   return (
@@ -122,7 +112,7 @@ export function SongView({ id }: { id: string }) {
       </header>
       <div className="screen" ref={screenRef} onClick={onScreenClick}>
         <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
-          {screenFit?.screens[screenIndex]?.map((column, i) => (
+          {screenFit?.surfaces[screenIndex]?.map((column, i) => (
             <div key={i} className="column" style={columnStyle}>
               {column.map((stanza, j) => (
                 <div role="group" key={j} className="stanza">

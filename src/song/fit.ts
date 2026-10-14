@@ -28,7 +28,7 @@ export type Fit = {
   fontSize: number
   columnCount: number
   /** Each surface's columns: one Screen or Sheet unless the Song Spills. */
-  screens: Stanza[][][]
+  surfaces: Stanza[][][]
 }
 
 /** Space between Stanzas in a column, in em. The Song view uses the same value. */
@@ -44,7 +44,8 @@ export const COLUMN_GAP_EM = 2
  *
  * A Song that cannot fit one surface at the minimum font Spills: it fills the readable
  * columns there and carries on onto as many more surfaces as it needs. Only then may a
- * Stanza taller than a whole column break between lines, and only where a column is full.
+ * Stanza taller than a whole column break between lines, only where a column is full. It
+ * starts in the room left in the current column unless that would cost an extra break.
  */
 export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer }: FitInput): Fit {
   let readableColumnCount = 1
@@ -55,16 +56,16 @@ export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer }: Fi
       if (columnWidth < widest) break
       readableColumnCount = columnCount
       const columns = pack(stanzas, columnCount, surface.height, fontSize, columnWidth, measurer)
-      if (columns) return { fontSize, columnCount, screens: [columns] }
+      if (columns) return { fontSize, columnCount, surfaces: [columns] }
     }
   }
   const columnWidth = columnWidthFor(surface, readableColumnCount, minFontSize)
   const columns = pack(stanzas, Infinity, surface.height, minFontSize, columnWidth, measurer, true) ?? []
-  const screens: Stanza[][][] = []
+  const surfaces: Stanza[][][] = []
   for (let i = 0; i < columns.length; i += readableColumnCount) {
-    screens.push(columns.slice(i, i + readableColumnCount))
+    surfaces.push(columns.slice(i, i + readableColumnCount))
   }
-  return { fontSize: minFontSize, columnCount: readableColumnCount, screens }
+  return { fontSize: minFontSize, columnCount: readableColumnCount, surfaces }
 }
 
 function columnWidthFor(surface: Surface, columnCount: number, fontSize: number): number {
@@ -113,11 +114,24 @@ function pack(
     return true
   }
 
-  /** End of the longest run of lines from `start` that fits `room`; `start` if none does. */
-  function longestPart(stanza: Stanza, start: number, room: number): number {
-    let end = start
-    while (end < stanza.lines.length && heightOf(part(stanza, start, end + 1)) <= room) end++
-    return end
+  /**
+   * Splits an oversized Stanza into parts that each fill a column, the first fitting
+   * `firstRoom`. Undefined when not even one line fits there; a line taller than a whole
+   * column still gets a part of its own.
+   */
+  function split(stanza: Stanza, firstRoom: number): Stanza[] | undefined {
+    const parts: Stanza[] = []
+    for (let start = 0, room = firstRoom; start < stanza.lines.length; room = height) {
+      let end = start
+      while (end < stanza.lines.length && heightOf(part(stanza, start, end + 1)) <= room) end++
+      if (end === start) {
+        if (parts.length === 0 && room < height) return undefined
+        end = start + 1
+      }
+      parts.push(part(stanza, start, end))
+      start = end
+    }
+    return parts
   }
 
   for (const stanza of stanzas) {
@@ -126,14 +140,14 @@ function pack(
       continue
     }
     if (!breakOversized) return undefined
-    for (let start = 0; start < stanza.lines.length; ) {
-      // Fill the rest of this column, else a fresh one; a line taller than a column still gets one.
-      let end = longestPart(stanza, start, height - usedHeight - gap)
-      if (end === start) end = Math.max(start + 1, longestPart(stanza, start, height))
-      if (!place(part(stanza, start, end))) return undefined
-      start = end
-      // The column is full where the Stanza breaks: the rest starts the next one.
-      if (start < stanza.lines.length) usedHeight = Infinity
+    const inFreshColumn = split(stanza, height)!
+    const inRoomLeft = split(stanza, height - usedHeight - gap)
+    const parts = inRoomLeft && inRoomLeft.length <= inFreshColumn.length ? inRoomLeft : inFreshColumn
+    if (parts === inFreshColumn) usedHeight = Infinity
+    for (const [i, stanzaPart] of parts.entries()) {
+      // The column is full where the Stanza breaks: each later part starts the next one.
+      if (i > 0) usedHeight = Infinity
+      if (!place(stanzaPart)) return undefined
     }
   }
   return columns

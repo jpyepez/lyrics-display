@@ -57,8 +57,9 @@ test('a long Song Spills onto Screens that the keyboard moves between', async ({
   await expect(screenIndicator(page)).toHaveText(`2/${count}`)
   const second = await shownLabels(page)
   expect(second).not.toContain('Verse 1')
-  // Each Screen picks up where the last one ended.
-  expect(second[0]).toBe(`Verse ${first.length + 1}`)
+  // At 1280×800 three columns of four Stanzas fill the first Screen; the second picks up after them.
+  expect(first.at(-1)).toBe('Verse 12')
+  expect(second[0]).toBe('Verse 13')
   await expectAllVisible(page)
 
   await page.keyboard.press('ArrowLeft')
