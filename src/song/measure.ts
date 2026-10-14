@@ -41,7 +41,8 @@ export function createDomMeasurer(): DomMeasurer {
       host = document.createElement('div')
       host.className = 'lyrics'
       host.setAttribute('aria-hidden', 'true')
-      host.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;display:block;'
+      // Fixed, so it never makes the page taller: a printed page count stays the Sheet count.
+      host.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;display:block;'
       document.body.append(host)
     }
     host.style.fontSize = `${fontSize}px`

@@ -82,5 +82,5 @@ test('title and artist are shown small above the Lyrics', async ({ page }) => {
   const title = page.getByRole('heading', { level: 1, name: 'Lantern Song' })
   const titleSize = await title.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
   expect(titleSize).toBeLessThan(await lyricsFontSize(page))
-  await expect(page.getByText('The Placeholders')).toBeVisible()
+  await expect(page.getByRole('main').getByText('The Placeholders')).toBeVisible()
 })

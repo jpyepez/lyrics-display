@@ -100,6 +100,12 @@ main.song {
   gap: 4px;
 }
 
+.song header .print-button {
+  font-size: 0.875rem;
+  min-width: 36px;
+  min-height: 36px;
+}
+
 .song header .override button {
   font: inherit;
   min-width: 36px;
@@ -144,4 +150,69 @@ main.song {
 .error {
   color: #b00020;
   margin: 0;
+}
+
+/* Sheets show only when printing; the Screen and its controls never print. */
+.print {
+  display: none;
+}
+
+@media print {
+  main.song {
+    display: none;
+  }
+
+  .print {
+    display: block;
+  }
+
+  /* Print is always black on white. The Sheet's white space is padding inside the page. */
+  .sheet {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: #000;
+    background: #fff;
+  }
+
+  .sheet + .sheet {
+    break-before: page;
+  }
+
+  .sheet header {
+    flex: none;
+    display: flex;
+    align-items: baseline;
+    gap: 0 12px;
+    overflow: hidden;
+  }
+
+  .sheet h1 {
+    font-size: 14pt;
+    margin: 0;
+  }
+
+  .sheet .artist,
+  .sheet .sheet-number {
+    font-size: 11pt;
+    color: #000;
+    margin: 0;
+  }
+
+  .sheet .sheet-number {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The Fit keeps the Lyrics inside this box; clipping only guards against rounding. */
+  .sheet .lyrics {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sheet .section-label {
+    color: #000;
+  }
 }

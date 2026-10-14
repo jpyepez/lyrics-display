@@ -19,7 +19,7 @@ test('a pasted Song is saved, opened, and still in the Library after a reload', 
   await page.getByRole('button', { name: 'Save' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Lantern Song' })).toBeVisible()
-  await expect(page.getByText('The Placeholders')).toBeVisible()
+  await expect(page.getByRole('main').getByText('The Placeholders')).toBeVisible()
   await expectSongLyrics(page)
 
   await page.goto('/')

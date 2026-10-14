@@ -24,6 +24,8 @@ The Library store and React components have no tests of their own; the Playwrigh
 - Fixtures are invented placeholder lyrics, never real songs (they are copyrighted and get committed).
 - Playwright's text matchers (`toHaveText`, `getByText`) collapse whitespace. To check that Lyrics are shown exactly as written, read `innerText` of the `lyric-line` test ids instead.
 - `data-testid` only where no role or label identifies the element (lyric lines).
+- Print: `page.pdf({ preferCSSPageSize: true })` renders print media at the Sheet's own page size (the default is Letter). To go back after `emulateMedia({ media: 'print' })`, pass `media: null`: emulated `'screen'` reaches the PDF too.
+- The Sheets are in the DOM on screen, only hidden, and text locators match hidden elements. Scope a text locator to `getByRole('main')` when the Sheet repeats that text (title, artist).
 
 ## What to skip
 

@@ -5,6 +5,7 @@ import { COLUMN_GAP_EM, fit, readableColumnCount, STANZA_GAP_EM } from './fit'
 import { parseLyrics } from './lyrics'
 import { clampScreenIndex, keyStep, tapStep } from './navigation'
 import { createDomMeasurer } from './measure'
+import { PrintView } from './PrintView'
 import { stepOverride, type OverrideRange, type OverrideStep } from './override'
 import type { Override, Song } from './song'
 
@@ -131,48 +132,60 @@ export function SongView({ id }: { id: string }) {
       .finally(() => setSaving(false))
   }
 
+  function onPrintClick(event: MouseEvent<HTMLButtonElement>) {
+    // After a tap or click, give the keys back to the Screen so a page-turner pedal still works.
+    if (event.detail > 0) event.currentTarget.blur()
+    window.print()
+  }
+
   function onScreenClick(event: MouseEvent<HTMLElement>) {
     turn(tapStep(event.clientX, event.currentTarget.getBoundingClientRect()))
   }
 
   return (
-    <main className="song">
-      <header>
-        <a href={routes.library}>Library</a>
-        <h1>{song.title}</h1>
-        <p className="artist">{song.artist}</p>
-        {/* Always laid out, so the Screen's height does not depend on whether the Song Spills. */}
-        <p role="status" className="screen-indicator" style={screenCount < 2 ? { visibility: 'hidden' } : undefined}>
-          {screenIndex + 1}/{screenCount}
-        </p>
-        {overrideRange && (
-          <OverrideControls override={song.override} range={overrideRange} saving={saving} onChange={saveOverride} />
-        )}
-        {saveFailed && (
-          <p role="alert" className="error">
-            Could not save the change. Try again.
+    <>
+      <main className="song">
+        <header>
+          <a href={routes.library}>Library</a>
+          <h1>{song.title}</h1>
+          <p className="artist">{song.artist}</p>
+          {/* Always laid out, so the Screen's height does not depend on whether the Song Spills. */}
+          <p role="status" className="screen-indicator" style={screenCount < 2 ? { visibility: 'hidden' } : undefined}>
+            {screenIndex + 1}/{screenCount}
           </p>
-        )}
-      </header>
-      <div className="screen" ref={screenRef} onClick={onScreenClick}>
-        <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
-          {screenFit?.surfaces[screenIndex]?.map((column, i) => (
-            <div key={i} className="column" style={columnStyle}>
-              {column.map((stanza, j) => (
-                <div role="group" key={j} className="stanza">
-                  {stanza.sectionLabel && <h2 className="section-label">{stanza.sectionLabel}</h2>}
-                  {stanza.lines.map((line, k) => (
-                    <p key={k} className="line" data-testid="lyric-line">
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </div>
-          ))}
-        </article>
-      </div>
-    </main>
+          <button type="button" className="print-button" onClick={onPrintClick}>
+            Print
+          </button>
+          {overrideRange && (
+            <OverrideControls override={song.override} range={overrideRange} saving={saving} onChange={saveOverride} />
+          )}
+          {saveFailed && (
+            <p role="alert" className="error">
+              Could not save the change. Try again.
+            </p>
+          )}
+        </header>
+        <div className="screen" ref={screenRef} onClick={onScreenClick}>
+          <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
+            {screenFit?.surfaces[screenIndex]?.map((column, i) => (
+              <div key={i} className="column" style={columnStyle}>
+                {column.map((stanza, j) => (
+                  <div role="group" key={j} className="stanza">
+                    {stanza.sectionLabel && <h2 className="section-label">{stanza.sectionLabel}</h2>}
+                    {stanza.lines.map((line, k) => (
+                      <p key={k} className="line" data-testid="lyric-line">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </article>
+        </div>
+      </main>
+      <PrintView song={song} stanzas={stanzas} measurer={measurer} />
+    </>
   )
 }
 
