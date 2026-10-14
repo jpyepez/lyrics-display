@@ -1,7 +1,7 @@
 ---
 slice: 3
 title: Spill and Screen navigation
-status: in-progress
+status: done
 blocked_by: [2]
 parent_prd: lyrics-display-v1
 ---
