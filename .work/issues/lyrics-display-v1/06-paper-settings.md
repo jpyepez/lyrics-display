@@ -13,3 +13,7 @@ parent_prd: lyrics-display-v1
 - [ ] Printed Sheets match the chosen size and orientation
 - [ ] Firefox hint shown if needed
 - [ ] Playwright test covers a non-default paper setting
+
+## Comments
+
+- 2026-10-15: Firefox couldn't be checked in #05 (no Firefox at hand). The user decided to show the Firefox hint anyway, to Firefox users only: it does no harm if Firefox turns out fine, and it's easy to remove after a real check.
