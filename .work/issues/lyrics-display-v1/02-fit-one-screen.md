@@ -1,7 +1,7 @@
 ---
 slice: 2
 title: Fit a Song to one Screen
-status: in-progress
+status: done
 blocked_by: [1]
 parent_prd: lyrics-display-v1
 ---
