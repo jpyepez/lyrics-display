@@ -104,7 +104,8 @@ export function SongView({ id }: { id: string }) {
   const [saveFailed, setSaveFailed] = useState(false)
   const screenCount = screenFit?.surfaces.length ?? 0
   const [screenIndex, turn] = useScreenIndex(screenCount)
-  useWakeLock()
+  // Only while a Song is shown, not while loading or for a Song missing from the Library.
+  useWakeLock(Boolean(song))
 
   if (song === undefined) return null
   if (song === null) {

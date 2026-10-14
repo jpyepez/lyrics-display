@@ -1,3 +1,4 @@
+import { savePersistenceAsked, wasPersistenceAsked } from '../app/settings'
 import type { NewSong, Song } from '../song/song'
 import { parseLibraryFile, toLibraryFile } from './libraryFile'
 
@@ -28,12 +29,13 @@ function openDb(): Promise<IDBDatabase> {
 
 /**
  * Asks the browser to keep the Library rather than clear it when space runs low or the site
- * goes unvisited (Safari, after a week). Once per page load, and only while not yet granted;
- * a refusal leaves the Library working as before, with export as the backup.
+ * goes unvisited (Safari, after a week). Only on first use: a refusal is not asked again, and
+ * leaves the Library working as before, with export as the backup.
  */
 function requestPersistence() {
   const storage = navigator.storage
-  if (!storage?.persist) return
+  if (!storage?.persist || wasPersistenceAsked()) return
+  savePersistenceAsked()
   storage
     .persisted()
     .then((persisted) => persisted || storage.persist())

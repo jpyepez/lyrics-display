@@ -9,12 +9,13 @@ function fakeWakeLockAndVisibility() {
   Object.defineProperty(document, 'visibilityState', { get: () => visibility })
   Object.defineProperty(document, 'hidden', { get: () => visibility === 'hidden' })
 
-  const held = new Set<object>()
+  type Sentinel = EventTarget & { released: boolean; type: string; release(): Promise<void> }
+  const held = new Set<Sentinel>()
   const fake = window as unknown as { wakeLocksHeld: () => number; setVisibility: (v: DocumentVisibilityState) => void }
   fake.wakeLocksHeld = () => held.size
   fake.setVisibility = (next) => {
     visibility = next
-    if (next === 'hidden') held.clear()
+    if (next === 'hidden') for (const sentinel of held) void sentinel.release()
     document.dispatchEvent(new Event('visibilitychange'))
   }
 
@@ -22,12 +23,14 @@ function fakeWakeLockAndVisibility() {
     value: {
       request: async (type: string) => {
         if (type !== 'screen' || visibility !== 'visible') throw new DOMException('Not allowed', 'NotAllowedError')
-        const sentinel = new EventTarget() as EventTarget & { released: boolean; type: string; release(): Promise<void> }
+        const sentinel = new EventTarget() as Sentinel
         sentinel.released = false
         sentinel.type = 'screen'
         sentinel.release = async () => {
+          if (sentinel.released) return
           sentinel.released = true
           held.delete(sentinel)
+          sentinel.dispatchEvent(new Event('release'))
         }
         held.add(sentinel)
         return sentinel
@@ -83,8 +86,27 @@ test('leaving the Song lets the screen sleep', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible()
   await expect.poll(() => wakeLocksHeld(page)).toBe(0)
 
+  // The fake grants a lock within the same task, so it would show by the next check.
   await setVisibility(page, 'hidden')
   await setVisibility(page, 'visible')
-  await page.waitForTimeout(100)
+  expect(await wakeLocksHeld(page)).toBe(0)
+})
+
+test('the screen holds one wake lock however often the tab reports it is visible', async ({ page }) => {
+  await pasteSong(page)
+  await expect.poll(() => wakeLocksHeld(page)).toBe(1)
+
+  await setVisibility(page, 'visible')
+  await setVisibility(page, 'visible')
+  expect(await wakeLocksHeld(page)).toBe(1)
+
+  await page.getByRole('link', { name: 'Library' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible()
+  await expect.poll(() => wakeLocksHeld(page)).toBe(0)
+})
+
+test('a Song missing from the Library does not keep the screen awake', async ({ page }) => {
+  await page.goto('/#/song/missing')
+  await expect(page.getByText('This Song is not in the Library.')).toBeVisible()
   expect(await wakeLocksHeld(page)).toBe(0)
 })

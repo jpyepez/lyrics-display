@@ -81,3 +81,27 @@ export function saveLastBackup(time: number) {
   localStorage.setItem(BACKUP_KEY, String(time))
   for (const listener of listeners) listener()
 }
+
+/**
+ * Set once the app has asked the browser to keep the Library, so a browser that answers
+ * with a prompt (Firefox) is not asked again on every visit.
+ */
+const PERSISTENCE_ASKED_KEY = 'lyrics-display.persistence-asked'
+
+/** Whether the app has asked for persistent storage on this device before. */
+export function wasPersistenceAsked(): boolean {
+  try {
+    return localStorage.getItem(PERSISTENCE_ASKED_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
+/** Records that the app asked for persistent storage; does nothing when storage is unavailable. */
+export function savePersistenceAsked() {
+  try {
+    localStorage.setItem(PERSISTENCE_ASKED_KEY, 'true')
+  } catch {
+    // Unavailable storage: the request is made again next visit, which is harmless.
+  }
+}

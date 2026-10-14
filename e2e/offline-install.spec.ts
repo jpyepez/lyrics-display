@@ -10,20 +10,30 @@ async function pasteSong(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: 'Lantern Song' })).toBeVisible()
 }
 
-test('the app asks the browser to keep the Library on first use', async ({ page }) => {
-  // Stands in for the browser's answer, which a test cannot give through a real prompt.
+/** Persistence requests so far, kept across reloads like the browser's own answer would be. */
+function persistRequests(page: Page) {
+  return page.evaluate(() => Number(sessionStorage.getItem('persistRequests')))
+}
+
+test('the app asks the browser to keep the Library on first use, and only then', async ({ page }) => {
+  // Stands in for the browser, which a test cannot answer through a real prompt. It says no,
+  // as a user refusing the prompt would.
   await page.addInitScript(() => {
-    const fake = window as unknown as { persistRequests: number }
-    fake.persistRequests = 0
     navigator.storage.persisted = async () => false
     navigator.storage.persist = async () => {
-      fake.persistRequests++
-      return true
+      sessionStorage.setItem('persistRequests', String(Number(sessionStorage.getItem('persistRequests')) + 1))
+      return false
     }
   })
 
   await pasteSong(page)
-  await expect.poll(() => page.evaluate(() => (window as unknown as { persistRequests: number }).persistRequests)).toBe(1)
+  await expect.poll(() => persistRequests(page)).toBe(1)
+
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1, name: 'Lantern Song' })).toBeVisible()
+  await page.getByRole('link', { name: 'Library' }).click()
+  await expect(page.getByRole('link', { name: /Lantern Song/ })).toBeVisible()
+  expect(await persistRequests(page)).toBe(1)
 })
 
 test('with the network off, the app still loads and the Library still works', async ({ page, context }) => {
@@ -33,7 +43,6 @@ test('with the network off, the app still loads and the Library still works', as
 
   await context.setOffline(true)
   await page.goto('/')
-  await page.reload()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible()
   await page.getByRole('link', { name: /Lantern Song/ }).click()
