@@ -69,7 +69,7 @@ export function createDomMeasurer(): DomMeasurer {
     height(stanza, fontSize, columnWidth) {
       const box = mounted(stanza, fontSize).getBoundingClientRect()
       if (box.width <= columnWidth) return box.height
-      // Only a line wider than the whole Surface at the minimum font gets here.
+      // Only a line wider than the whole surface at the minimum font gets here.
       let heights = wrapped.get(stanza)
       if (!heights) wrapped.set(stanza, (heights = new Map()))
       const key = `${fontSize}|${columnWidth}`

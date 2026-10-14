@@ -6,7 +6,10 @@ import { parseLyrics } from './lyrics'
 import { createDomMeasurer } from './measure'
 import type { Song } from './song'
 
-/** Smallest Screen font: readable from a playing position, desktop or phone at arm's length. */
+/**
+ * Smallest Screen font, the same on desktop and phone: 20px reads from a playing
+ * position on a desktop and at arm's length on a phone.
+ */
 const SCREEN_MIN_FONT_SIZE = 20
 const SCREEN_MAX_FONT_SIZE = 72
 
@@ -41,7 +44,7 @@ export function SongView({ id }: { id: string }) {
   }, [id])
 
   const stanzas = useMemo(() => (song ? parseLyrics(song.lyrics) : []), [song])
-  const layout = useMemo(
+  const screenFit = useMemo(
     () =>
       screen &&
       fit({
@@ -64,7 +67,7 @@ export function SongView({ id }: { id: string }) {
     )
   }
 
-  const lyricsStyle: CSSProperties = layout ? { fontSize: layout.fontSize, gap: `${COLUMN_GAP_EM}em` } : {}
+  const lyricsStyle: CSSProperties = screenFit ? { fontSize: screenFit.fontSize, gap: `${COLUMN_GAP_EM}em` } : {}
   const columnStyle: CSSProperties = { gap: `${STANZA_GAP_EM}em` }
 
   return (
@@ -76,7 +79,7 @@ export function SongView({ id }: { id: string }) {
       </header>
       <div className="screen" ref={screenRef}>
         <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
-          {layout?.columns.map((column, i) => (
+          {screenFit?.columns.map((column, i) => (
             <div key={i} className="column" style={columnStyle}>
               {column.map((stanza) => (
                 <div role="group" key={stanzas.indexOf(stanza)} className="stanza">

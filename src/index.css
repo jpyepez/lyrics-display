@@ -79,10 +79,12 @@ main.song {
   margin: 0;
 }
 
+/* A Song that cannot fit at the minimum font scrolls until Spill arrives (#03). */
 .screen {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Gaps between columns and Stanzas come from the Fit engine, inline. */

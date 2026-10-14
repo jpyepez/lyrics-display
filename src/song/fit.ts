@@ -1,6 +1,6 @@
 import type { Stanza } from './lyrics'
 
-/** Where a Song is shown: a Screen in the app or a printed Sheet. Sizes in CSS px. */
+/** The surface a Song is shown on: a Screen in the app or a printed Sheet. Sizes in CSS px. */
 export type Surface = {
   kind: 'screen' | 'sheet'
   width: number
@@ -26,6 +26,7 @@ export type FitInput = {
 /** A Fit: one font size and the Stanzas placed column by column, in order. */
 export type Fit = {
   fontSize: number
+  columnCount: number
   columns: Stanza[][]
 }
 
@@ -35,22 +36,33 @@ export const STANZA_GAP_EM = 1
 export const COLUMN_GAP_EM = 2
 
 /**
- * Lays out a Song on one Surface. Tries the largest font in one column first, then more
+ * Lays out a Song on one surface. Tries the largest font in one column first, then more
  * columns while they stay readable, then a smaller font, one px at a time, down to the
  * minimum. A column is readable when the widest line of every Stanza fits it unwrapped.
  * A Stanza is never split across columns.
+ *
+ * A Song that cannot fit at the minimum font fills the readable columns there, the last
+ * column taking the rest, until Spill arrives (ticket #03).
  */
 export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer }: FitInput): Fit {
+  let readableColumnCount = 1
   for (const fontSize of fontSizes(maxFontSize, minFontSize)) {
     const widest = Math.max(0, ...stanzas.map((stanza) => measurer.width(stanza, fontSize)))
-    for (let count = 1; ; count++) {
-      const columnWidth = (surface.width - (count - 1) * COLUMN_GAP_EM * fontSize) / count
+    for (let columnCount = 1; ; columnCount++) {
+      const columnWidth = columnWidthFor(surface, columnCount, fontSize)
       if (columnWidth < widest) break
-      const columns = pack(stanzas, count, surface.height, fontSize, columnWidth, measurer)
-      if (columns) return { fontSize, columns }
+      readableColumnCount = columnCount
+      const columns = pack(stanzas, columnCount, surface.height, fontSize, columnWidth, measurer)
+      if (columns) return { fontSize, columnCount, columns }
     }
   }
-  return { fontSize: minFontSize, columns: [stanzas] }
+  const columnWidth = columnWidthFor(surface, readableColumnCount, minFontSize)
+  const columns = pack(stanzas, readableColumnCount, surface.height, minFontSize, columnWidth, measurer, true)
+  return { fontSize: minFontSize, columnCount: readableColumnCount, columns: columns ?? [stanzas] }
+}
+
+function columnWidthFor(surface: Surface, columnCount: number, fontSize: number): number {
+  return (surface.width - (columnCount - 1) * COLUMN_GAP_EM * fontSize) / columnCount
 }
 
 /** Whole px sizes from `max` down, ending on `min` exactly. */
@@ -63,29 +75,34 @@ function fontSizes(max: number, min: number): number[] {
 
 /**
  * Places the Stanzas in order, filling each column before starting the next.
- * Undefined when they need more than `count` columns.
+ * Undefined when they need more than `columnCount` columns, unless `lastTakesRest`,
+ * which puts whatever is left in the last column, however tall.
  */
 function pack(
   stanzas: Stanza[],
-  count: number,
+  columnCount: number,
   height: number,
   fontSize: number,
   columnWidth: number,
   measurer: TextMeasurer,
+  lastTakesRest = false,
 ): Stanza[][] | undefined {
   const gap = STANZA_GAP_EM * fontSize
   const columns: Stanza[][] = []
-  let used = Infinity
+  /** Height taken in the current column; none open yet, so the first Stanza opens one. */
+  let usedHeight = Infinity
   for (const stanza of stanzas) {
     const stanzaHeight = measurer.height(stanza, fontSize, columnWidth)
-    if (stanzaHeight > height) return undefined
-    if (used + gap + stanzaHeight > height) {
-      if (columns.length === count) return undefined
+    if (stanzaHeight > height && !lastTakesRest) return undefined
+    const full = usedHeight + gap + stanzaHeight > height
+    if (full && columns.length < columnCount) {
       columns.push([stanza])
-      used = stanzaHeight
+      usedHeight = stanzaHeight
+    } else if (full && !lastTakesRest) {
+      return undefined
     } else {
       columns[columns.length - 1].push(stanza)
-      used += gap + stanzaHeight
+      usedHeight += gap + stanzaHeight
     }
   }
   return columns
