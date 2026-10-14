@@ -62,3 +62,26 @@ test('Lyrics with only blank lines are not saved', async ({ page }) => {
   await page.getByRole('link', { name: 'Cancel' }).click()
   await expect(page.getByText('No Songs yet.')).toBeVisible()
 })
+
+test('pasting a Song already in the Library opens the existing Song instead of adding a copy', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Paste a Song' }).click()
+  await page.getByLabel('Title').fill('Lantern Song')
+  await page.getByLabel('Artist').fill('The Placeholders')
+  await page.getByLabel('Lyrics').fill('The first lantern burns')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Lantern Song' })).toBeVisible()
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Paste a Song' }).click()
+  await page.getByLabel('Title').fill('  lantern SONG ')
+  await page.getByLabel('Artist').fill('the placeholders  ')
+  await page.getByLabel('Lyrics').fill('A second lantern copy')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Lantern Song' })).toBeVisible()
+  await expect(page.getByTestId('lyric-line')).toHaveText(['The first lantern burns'])
+
+  await page.goto('/')
+  await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(1)
+})

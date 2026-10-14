@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react'
 
 export type Route =
   | { name: 'library' }
-  | { name: 'paste' }
+  | { name: 'paste'; title?: string; artist?: string }
+  | { name: 'search' }
   | { name: 'settings' }
   | { name: 'song'; id: string }
   | { name: 'edit-song'; id: string }
@@ -13,6 +14,9 @@ export type RouteHash = string & { readonly __brand: 'RouteHash' }
 export const routes = {
   library: '#/' as RouteHash,
   paste: '#/paste' as RouteHash,
+  /** Paste with title and artist already filled in, for a Song search could not provide. */
+  pasteFor: (title: string, artist: string) => `#/paste?${new URLSearchParams({ title, artist })}` as RouteHash,
+  search: '#/search' as RouteHash,
   settings: '#/settings' as RouteHash,
   song: (id: string) => `#/song/${encodeURIComponent(id)}` as RouteHash,
   editSong: (id: string) => `#/song/${encodeURIComponent(id)}/edit` as RouteHash,
@@ -20,6 +24,12 @@ export const routes = {
 
 function parseHash(hash: string): Route {
   if (hash === routes.paste) return { name: 'paste' }
+  const paste = /^#\/paste\?(.*)$/.exec(hash)
+  if (paste) {
+    const query = new URLSearchParams(paste[1])
+    return { name: 'paste', title: query.get('title') ?? '', artist: query.get('artist') ?? '' }
+  }
+  if (hash === routes.search) return { name: 'search' }
   if (hash === routes.settings) return { name: 'settings' }
   const edit = /^#\/song\/([^/]+)\/edit$/.exec(hash)
   if (edit) return { name: 'edit-song', id: decodeURIComponent(edit[1]) }

@@ -24,10 +24,16 @@ function openDb(): Promise<IDBDatabase> {
   return db
 }
 
-/**
- * Runs one request against the songs object store in its own transaction. A write settles
- * once the transaction commits, so a reload right after it cannot lose it.
- */
+/** Settles once the transaction commits, so a reload right after a write cannot lose it. */
+function commit(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+    transaction.onabort = () => reject(transaction.error)
+  })
+}
+
+/** Runs one request against the songs object store in its own transaction; a write settles on commit. */
 async function songsRequest<T>(
   mode: IDBTransactionMode,
   request: (songs: IDBObjectStore) => IDBRequest<T>,
@@ -35,19 +41,34 @@ async function songsRequest<T>(
   const transaction = (await openDb()).transaction(SONGS, mode)
   const result = settle(request(transaction.objectStore(SONGS)))
   if (mode === 'readonly') return result
-  const committed = new Promise<void>((resolve, reject) => {
-    transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
-    transaction.onabort = () => reject(transaction.error)
-  })
-  const [value] = await Promise.all([result, committed])
+  const [value] = await Promise.all([result, commit(transaction)])
   return value
 }
 
+/** Title and artist as the duplicate rule compares them: trimmed, ignoring case. */
+function songKey({ title, artist }: Pick<Song, 'title' | 'artist'>): string {
+  const fold = (text: string) => text.trim().toLocaleLowerCase()
+  return JSON.stringify([fold(title), fold(artist)])
+}
+
+/**
+ * Adds a Song, unless one with the same title and artist (trimmed, ignoring case) is already
+ * in the Library: then that Song comes back unchanged. The check and the add share one
+ * transaction, so two quick adds of the same Song cannot both get in.
+ */
 export async function addSong(input: NewSong): Promise<Song> {
+  const transaction = (await openDb()).transaction(SONGS, 'readwrite')
+  const songs = transaction.objectStore(SONGS)
+  const committed = commit(transaction)
+  const key = songKey(input)
+  const existing = (await settle(songs.getAll() as IDBRequest<Song[]>)).find((song) => songKey(song) === key)
+  if (existing) {
+    await committed
+    return existing
+  }
   const now = Date.now()
   const song: Song = { id: crypto.randomUUID(), ...input, createdAt: now, updatedAt: now }
-  await songsRequest('readwrite', (songs) => songs.add(song))
+  await Promise.all([settle(songs.add(song)), committed])
   return song
 }
 

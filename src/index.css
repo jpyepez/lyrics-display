@@ -106,6 +106,45 @@ main {
   justify-content: flex-end;
 }
 
+/* Search results: each one is a full-width row to pick. */
+.search .results {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.search .results button,
+.search .results a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.search .results .title {
+  font-weight: 600;
+}
+
+.search .results .album,
+.search .results .instrumental {
+  color: #555;
+  font-style: italic;
+}
+
+.search .error {
+  margin-top: 16px;
+}
+
 .settings fieldset {
   display: flex;
   flex-wrap: wrap;

@@ -2,7 +2,8 @@ import { navigate, routes } from '../app/route'
 import { addSong } from '../library/library'
 import { SongForm, type SongFields } from './SongForm'
 
-export function PasteSongForm() {
+/** `title` and `artist` start the fields filled in, as when search sends the user here. */
+export function PasteSongForm({ title = '', artist = '' }: { title?: string; artist?: string }) {
   async function save(song: SongFields) {
     const saved = await addSong(song)
     navigate(routes.song(saved.id))
@@ -11,7 +12,7 @@ export function PasteSongForm() {
   return (
     <main className="song-form-view">
       <h1>Paste a Song</h1>
-      <SongForm cancelHref={routes.library} onSave={save} />
+      <SongForm initial={{ title, artist, lyrics: '' }} cancelHref={routes.library} onSave={save} />
     </main>
   )
 }

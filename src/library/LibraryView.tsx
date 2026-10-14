@@ -40,6 +40,9 @@ export function LibraryView() {
     <main className="library">
       <h1>Library</h1>
       <div className="actions">
+        <button type="button" onClick={() => navigate(routes.search)}>
+          Search for a Song
+        </button>
         <button type="button" onClick={() => navigate(routes.paste)}>
           Paste a Song
         </button>
