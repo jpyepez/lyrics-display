@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent } from 'react'
+import { downloadLibraryFile } from '../library/backup'
+import { importLibrary, type ImportResult } from '../library/library'
+import { LibraryFileError } from '../library/libraryFile'
 import type { Orientation, PaperSetting, PaperSize } from '../song/sheet'
 import { routes } from './route'
 import { savePaperSetting, usePaperSetting } from './settings'
@@ -19,9 +22,18 @@ const ORIENTATION_OPTIONS: { value: Orientation; label: string }[] = [
  */
 const isFirefox = navigator.userAgent.includes('Firefox/')
 
+const songs = (count: number) => `${count} ${count === 1 ? 'Song' : 'Songs'}`
+
+/** What the user is told after an import. */
+function describeImport({ added, skipped }: ImportResult): string {
+  return `Added ${songs(added)}, skipped ${skipped} already in the Library.`
+}
+
 export function SettingsView() {
   const paper = usePaperSetting()
   const [saveFailed, setSaveFailed] = useState(false)
+  const [imported, setImported] = useState<string>()
+  const [importError, setImportError] = useState<string>()
 
   /** Saves a change as soon as it is picked; there is no Save button. */
   function choosePaper(setting: PaperSetting) {
@@ -30,6 +42,23 @@ export function SettingsView() {
       setSaveFailed(false)
     } catch {
       setSaveFailed(true)
+    }
+  }
+
+  async function importFile(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget
+    const file = input.files?.[0]
+    if (!file) return
+    setImported(undefined)
+    setImportError(undefined)
+    try {
+      setImported(describeImport(await importLibrary(await file.text())))
+    } catch (error) {
+      const reason = error instanceof LibraryFileError ? error.message : 'The file could not be read or saved.'
+      setImportError(`${reason} Your Library is unchanged.`)
+    } finally {
+      // Lets the same file be picked again.
+      input.value = ''
     }
   }
 
@@ -73,6 +102,28 @@ export function SettingsView() {
           footers” in the print dialog once.
         </p>
       )}
+      <section aria-labelledby="backup-heading">
+        <h2 id="backup-heading">Backup</h2>
+        <p className="hint">
+          Your Library is kept only in this browser, which may clear it. Export it now and then, and import the file
+          to bring your Songs back or move them to another device.
+        </p>
+        <div className="actions">
+          <button type="button" onClick={downloadLibraryFile}>
+            Export Library
+          </button>
+          <label className="file-button">
+            Import a Library file
+            <input type="file" name="library-file" accept="application/json,.json" onChange={importFile} />
+          </label>
+        </div>
+        <p role="status">{imported}</p>
+        {importError && (
+          <p role="alert" className="error">
+            {importError}
+          </p>
+        )}
+      </section>
       {saveFailed && (
         <p role="alert" className="error">
           Could not save the setting on this device.

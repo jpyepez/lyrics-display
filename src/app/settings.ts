@@ -54,3 +54,30 @@ export function savePaperSetting(setting: PaperSetting) {
   localStorage.setItem(PAPER_KEY, JSON.stringify(setting))
   for (const listener of listeners) listener()
 }
+
+/**
+ * When the user last exported the Library or put off the reminder to, in ms since the epoch.
+ * Kept here, not in the Library, so the export file never carries it.
+ */
+const BACKUP_KEY = 'lyrics-display.last-backup'
+
+function readLastBackup(): string | null {
+  try {
+    return localStorage.getItem(BACKUP_KEY)
+  } catch {
+    return null
+  }
+}
+
+/** The last export or "Not now", or undefined when there has been neither. */
+export function useLastBackup(): number | undefined {
+  const stored = useSyncExternalStore(subscribe, readLastBackup)
+  const time = Number(stored ?? Number.NaN)
+  return Number.isFinite(time) ? time : undefined
+}
+
+/** Records an export or a "Not now" at `time`. Throws when storage is unavailable. */
+export function saveLastBackup(time: number) {
+  localStorage.setItem(BACKUP_KEY, String(time))
+  for (const listener of listeners) listener()
+}

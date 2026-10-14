@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { navigate, routes } from '../app/route'
+import { saveLastBackup, useLastBackup } from '../app/settings'
 import type { Song } from '../song/song'
+import { downloadLibraryFile, isBackupDue } from './backup'
 import { deleteSong, listSongs, matchesFilter, restoreSong } from './library'
 
 /** How long the Undo toast stays after a delete. */
@@ -34,6 +36,19 @@ export function LibraryView() {
     setSongs(await listSongs())
   }
 
+  const lastBackup = useLastBackup()
+  // Read once when the Library opens; the reminder only needs to be right to the day.
+  const [openedAt] = useState(() => Date.now())
+  const backupDue = isBackupDue(songs?.length ?? 0, lastBackup, openedAt)
+
+  function putOffBackup() {
+    try {
+      saveLastBackup(Date.now())
+    } catch {
+      // Storage unavailable: the reminder stays until the user exports.
+    }
+  }
+
   const shown = songs?.filter((song) => matchesFilter(song, filter))
 
   return (
@@ -48,6 +63,20 @@ export function LibraryView() {
         </button>
         <a href={routes.settings}>Settings</a>
       </div>
+      {backupDue && (
+        <section className="backup-nudge" aria-labelledby="backup-nudge-heading">
+          <h2 id="backup-nudge-heading">Backup</h2>
+          <p>Your Library is kept only in this browser, which may clear it. Export a copy now and then.</p>
+          <div className="actions">
+            <button type="button" onClick={downloadLibraryFile}>
+              Export Library
+            </button>
+            <button type="button" onClick={putOffBackup}>
+              Not now
+            </button>
+          </div>
+        </section>
+      )}
       {songs?.length === 0 && <p>No Songs yet.</p>}
       {songs && songs.length > 0 && (
         <>

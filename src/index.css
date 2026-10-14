@@ -167,6 +167,74 @@ main {
   color: #555;
 }
 
+.settings .actions,
+.backup-nudge .actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings .actions button,
+.settings .file-button,
+.backup-nudge button {
+  min-height: 36px;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.settings section {
+  margin-top: 24px;
+}
+
+/* A file input dressed as a button: the label is what shows, the input stays focusable. */
+.settings .file-button {
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid #767676;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  background: #efefef;
+  cursor: pointer;
+}
+
+.settings .file-button:hover {
+  background: #e5e5e5;
+}
+
+.settings .file-button:focus-within {
+  outline: 2px solid #1a1a1a;
+  outline-offset: 2px;
+}
+
+.file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.backup-nudge {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f7f7f7;
+}
+
+.backup-nudge h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.backup-nudge p {
+  margin: 4px 0 12px;
+}
+
 /* The Song view fills the viewport: a compact header, then the Screen. */
 main.song {
   box-sizing: border-box;

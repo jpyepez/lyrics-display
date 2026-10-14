@@ -1,4 +1,5 @@
 import type { NewSong, Song } from '../song/song'
+import { parseLibraryFile, toLibraryFile } from './libraryFile'
 
 const DB_NAME = 'lyrics-display'
 const DB_VERSION = 1
@@ -109,4 +110,34 @@ export async function deleteSong(id: string): Promise<void> {
 /** Puts a deleted Song back exactly as it was, with its id, Note, Override and times. */
 export async function restoreSong(song: Song): Promise<void> {
   await songsRequest('readwrite', (songs) => songs.put(song))
+}
+
+/** The whole Library as Library file text: every Song with its Note, Override and times. */
+export async function exportLibrary(): Promise<string> {
+  return toLibraryFile(await listSongs())
+}
+
+/** How an import went: Songs added, and Songs skipped as already in the Library. */
+export type ImportResult = { added: number; skipped: number }
+
+/**
+ * Adds the Songs in Library file text, skipping any the duplicate rule finds already in the
+ * Library or earlier in the same file. The whole file is checked before anything is written,
+ * and the adds share one transaction, so a bad file leaves the Library as it was. Throws a
+ * LibraryFileError for a file this app cannot read.
+ */
+export async function importLibrary(text: string): Promise<ImportResult> {
+  const imported = parseLibraryFile(text)
+  const transaction = (await openDb()).transaction(SONGS, 'readwrite')
+  const songs = transaction.objectStore(SONGS)
+  const committed = commit(transaction)
+  const keys = new Set((await settle(songs.getAll() as IDBRequest<Song[]>)).map(songKey))
+  const added = imported.filter((song) => {
+    const key = songKey(song)
+    if (keys.has(key)) return false
+    keys.add(key)
+    return true
+  })
+  await Promise.all([...added.map((song) => settle(songs.add({ id: crypto.randomUUID(), ...song }))), committed])
+  return { added: added.length, skipped: imported.length - added.length }
 }
