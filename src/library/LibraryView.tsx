@@ -13,9 +13,12 @@ export function LibraryView() {
   return (
     <main className="library">
       <h1>Library</h1>
-      <button type="button" onClick={() => navigate(routes.paste)}>
-        Paste a Song
-      </button>
+      <div className="actions">
+        <button type="button" onClick={() => navigate(routes.paste)}>
+          Paste a Song
+        </button>
+        <a href={routes.settings}>Settings</a>
+      </div>
       {songs?.length === 0 && <p>No Songs yet.</p>}
       <ul>
         {songs?.map((song) => (

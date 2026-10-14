@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export type Route = { name: 'library' } | { name: 'paste' } | { name: 'song'; id: string }
+export type Route = { name: 'library' } | { name: 'paste' } | { name: 'settings' } | { name: 'song'; id: string }
 
 /** A URL hash for one of the app's routes. Only `routes` makes these. */
 export type RouteHash = string & { readonly __brand: 'RouteHash' }
@@ -8,11 +8,13 @@ export type RouteHash = string & { readonly __brand: 'RouteHash' }
 export const routes = {
   library: '#/' as RouteHash,
   paste: '#/paste' as RouteHash,
+  settings: '#/settings' as RouteHash,
   song: (id: string) => `#/song/${encodeURIComponent(id)}` as RouteHash,
 }
 
 function parseHash(hash: string): Route {
   if (hash === routes.paste) return { name: 'paste' }
+  if (hash === routes.settings) return { name: 'settings' }
   const song = /^#\/song\/(.+)$/.exec(hash)
   if (song) return { name: 'song', id: decodeURIComponent(song[1]) }
   return { name: 'library' }

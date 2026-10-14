@@ -3,7 +3,25 @@ import type { Surface } from './fit'
 /** A sheet of paper as it goes through the printer, in mm. */
 export type Paper = { width: number; height: number }
 
-export const A4_PORTRAIT: Paper = { width: 210, height: 297 }
+/** Paper sizes the app prints on, upright, in mm. */
+const PAPER_SIZES = {
+  a4: { width: 210, height: 297 },
+  letter: { width: 215.9, height: 279.4 },
+} satisfies Record<string, Paper>
+
+export type PaperSize = keyof typeof PAPER_SIZES
+export type Orientation = 'portrait' | 'landscape'
+
+/** The paper the user prints on: app-wide, stored on the device. */
+export type PaperSetting = { size: PaperSize; orientation: Orientation }
+
+export const DEFAULT_PAPER_SETTING: PaperSetting = { size: 'a4', orientation: 'portrait' }
+
+/** The sheet of paper a setting stands for, turned on its side for landscape. */
+export function paperFor({ size, orientation }: PaperSetting): Paper {
+  const { width, height } = PAPER_SIZES[size]
+  return orientation === 'landscape' ? { width: height, height: width } : { width, height }
+}
 
 /** White space around a Sheet's content, inside the page: the page margin is zero. In mm. */
 export const SHEET_PADDING_MM = 15

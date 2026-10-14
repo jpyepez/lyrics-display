@@ -1,9 +1,10 @@
 import { useMemo, type CSSProperties } from 'react'
+import { usePaperSetting } from '../app/settings'
 import { COLUMN_GAP_EM, fit, STANZA_GAP_EM, type TextMeasurer } from './fit'
 import type { Stanza } from './lyrics'
 import { measureSheetHeader } from './measure'
 import {
-  A4_PORTRAIT,
+  paperFor,
   SHEET_HEIGHT_SLACK,
   SHEET_MAX_FONT_SIZE,
   SHEET_MIN_FONT_SIZE,
@@ -21,11 +22,12 @@ type PrintViewProps = {
 
 /**
  * The Song's Sheets, shown only when printing, from the in-app button or the browser's own
- * Print command. Sheets always get the automatic Fit: the Override is for Screens, and the
- * Note is never printed.
+ * Print command, on the paper chosen in Settings. Sheets always get the automatic Fit: the
+ * Override is for Screens, and the Note is never printed.
  */
 export function PrintView({ song, stanzas, measurer }: PrintViewProps) {
-  const paper = A4_PORTRAIT
+  const paperSetting = usePaperSetting()
+  const paper = useMemo(() => paperFor(paperSetting), [paperSetting])
   const headerHeight = useMemo(
     () => measureSheetHeader(song.title, song.artist, sheetContentWidth(paper)),
     [song.title, song.artist, paper],

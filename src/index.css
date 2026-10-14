@@ -15,6 +15,12 @@ main {
   margin: 0 auto;
 }
 
+.library .actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .library ul {
   list-style: none;
   padding: 0;
@@ -50,6 +56,29 @@ main {
   gap: 12px;
   align-items: center;
   justify-content: flex-end;
+}
+
+.settings fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0 0 16px;
+}
+
+.settings label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.settings input {
+  margin: 0;
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: #555;
 }
 
 /* The Song view fills the viewport: a compact header, then the Screen. */
