@@ -19,23 +19,31 @@ async function printedPageCount(page: Page): Promise<number> {
 
 const sheets = (page: Page) => page.getByRole('region', { name: /^Sheet/ })
 
-/** Each Sheet's Stanzas, as print media lays them out: label, line count, font size and place on the Sheet. */
+/** Each Sheet's Stanzas, as print media lays them out: label, line count, font size and place in the Lyrics box. */
 async function printedStanzas(page: Page) {
-  return sheets(page).evaluateAll((els) =>
-    els.map((sheet) => {
-      const box = sheet.getBoundingClientRect()
-      return [...sheet.querySelectorAll('[role="group"]')].map((stanza) => {
-        const inner = stanza.getBoundingClientRect()
-        return {
-          label: stanza.querySelector('h2')?.textContent,
-          lines: stanza.querySelectorAll('.line').length,
-          inside: inner.top >= box.top && inner.bottom <= box.bottom && inner.left >= box.left && inner.right <= box.right,
-          fontSize: getComputedStyle(stanza.querySelector('.line')!).fontSize,
-          at: [Math.round(inner.left - box.left), Math.round(inner.top - box.top)],
-        }
+  const result = []
+  for (const sheet of await sheets(page).all()) {
+    // Inside the Lyrics box, which clips anything the Fit let run over.
+    const box = (await sheet.getByRole('article', { name: 'Lyrics' }).boundingBox())!
+    const stanzas = []
+    for (const stanza of await sheet.getByRole('group').all()) {
+      const inner = (await stanza.boundingBox())!
+      const lines = stanza.getByTestId('sheet-line')
+      stanzas.push({
+        label: await stanza.getByRole('heading', { level: 2 }).textContent(),
+        lines: await lines.count(),
+        inside:
+          inner.y >= box.y &&
+          inner.y + inner.height <= box.y + box.height &&
+          inner.x >= box.x &&
+          inner.x + inner.width <= box.x + box.width,
+        fontSize: await lines.first().evaluate((el) => getComputedStyle(el).fontSize),
+        at: [Math.round(inner.x - box.x), Math.round(inner.y - box.y)],
       })
-    }),
-  )
+    }
+    result.push(stanzas)
+  }
+  return result
 }
 
 /** The text print media shows, one entry per line, lower-cased (Section Labels print in capitals). */
@@ -50,17 +58,31 @@ async function printedText(page: Page): Promise<string[]> {
 test.use({ viewport: { width: 1280, height: 800 } })
 
 test('a short Song prints as one Sheet with only its title, artist and Lyrics', async ({ page }) => {
-  const lyrics = verses(3)
-  await pasteSong(page, 'Short Song', lyrics)
+  await pasteSong(page, 'Short Song', verses(3))
 
   expect(await printedPageCount(page)).toBe(1)
 
   await page.emulateMedia({ media: 'print' })
   await expect(sheets(page)).toHaveCount(1)
-  const allowed = new Set(['short song', 'the placeholders', ...lyrics.toLowerCase().split('\n')].map((l) => l.replace(/^\[|\]$/g, '')))
-  const shown = await printedText(page)
-  expect(shown.slice(0, 2)).toEqual(['short song', 'the placeholders'])
-  expect(shown.filter((line) => !allowed.has(line))).toEqual([])
+  expect(await printedText(page)).toEqual([
+    'short song',
+    'the placeholders',
+    'verse 1',
+    'the lantern hums along the window road',
+    'the river hums along the harbor road',
+    'the kettle hums along the meadow road',
+    'the window hums along the candle road',
+    'verse 2',
+    'the river hums along the harbor road',
+    'the kettle hums along the meadow road',
+    'the window hums along the candle road',
+    'the harbor hums along the pebble road',
+    'verse 3',
+    'the kettle hums along the meadow road',
+    'the window hums along the candle road',
+    'the harbor hums along the pebble road',
+    'the meadow hums along the lantern road',
+  ])
 })
 
 test('a long Song Spills onto two Sheets marked 1/2 and 2/2, no Stanza split', async ({ page }) => {
@@ -93,7 +115,7 @@ test('a Screen Override has no effect on the Sheets', async ({ page }) => {
   expect(await printedStanzas(page)).toEqual(auto)
 })
 
-test('the Print button opens the browser Print, which prints the Sheets', async ({ page }) => {
+test('the Print button opens the browser Print', async ({ page }) => {
   await pasteSong(page, 'Short Song', verses(3))
   await page.evaluate(() => {
     window.print = () => document.body.setAttribute('data-printed', '')
@@ -104,4 +126,23 @@ test('the Print button opens the browser Print, which prints the Sheets', async 
   await expect(page.locator('body')).toHaveAttribute('data-printed')
   // The button gives the keys back, so a page-turner pedal still turns the Screen.
   await expect(page.getByRole('button', { name: 'Print' })).not.toBeFocused()
+})
+
+test('a long title wraps in the Sheet header and keeps the artist and Sheet number in view', async ({ page }) => {
+  const title = 'A Very Long Placeholder Title About Lanterns, Rivers, Kettles, Windows, Harbors and Meadows'
+  await pasteSong(page, title, verses(24))
+
+  expect(await printedPageCount(page)).toBe(2)
+
+  await page.emulateMedia({ media: 'print' })
+  const first = sheets(page).nth(0)
+  const sheetBox = (await first.boundingBox())!
+  const lyricsTop = (await first.getByRole('group').first().boundingBox())!.y
+  // Above the Lyrics and inside the Sheet, so neither cut off nor covered.
+  for (const text of [title, 'The Placeholders', '1/2']) {
+    const box = (await first.getByText(text, { exact: true }).boundingBox())!
+    expect(box.x + box.width).toBeLessThanOrEqual(sheetBox.x + sheetBox.width)
+    expect(box.y + box.height).toBeLessThanOrEqual(lyricsTop)
+  }
+  for (const stanza of (await printedStanzas(page)).flat()) expect(stanza).toMatchObject({ lines: 4, inside: true })
 })

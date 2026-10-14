@@ -89,3 +89,29 @@ export function createDomMeasurer(): DomMeasurer {
     },
   }
 }
+
+/**
+ * Height of a Sheet's header for this title and artist, laid out at this width as the
+ * Print view styles it, a Sheet number included: a long title wraps onto more lines.
+ */
+export function measureSheetHeader(title: string, artist: string, width: number): number {
+  const sheet = document.createElement('section')
+  sheet.className = 'sheet'
+  sheet.style.cssText = `position:fixed;left:-99999px;top:0;visibility:hidden;width:${width}px;`
+  const header = document.createElement('header')
+  for (const [tag, className, text] of [
+    ['h1', '', title],
+    ['p', 'artist', artist],
+    ['p', 'sheet-number', '1/2'],
+  ]) {
+    const element = document.createElement(tag)
+    if (className) element.className = className
+    element.textContent = text
+    header.append(element)
+  }
+  sheet.append(header)
+  document.body.append(sheet)
+  const height = header.getBoundingClientRect().height
+  sheet.remove()
+  return height
+}

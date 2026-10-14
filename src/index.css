@@ -157,6 +157,38 @@ main.song {
   display: none;
 }
 
+/*
+ * A Sheet's header is styled outside print too, so the Fit can measure its height on
+ * screen (src/song/measure.ts). A long title wraps rather than being cut off.
+ */
+.sheet header {
+  /* The measured height includes the padding, and the Print view sets it back as the height. */
+  box-sizing: border-box;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 12px;
+  padding-bottom: 12px;
+}
+
+.sheet h1 {
+  font-size: 14pt;
+  margin: 0;
+}
+
+.sheet .artist,
+.sheet .sheet-number {
+  font-size: 11pt;
+  color: #000;
+  margin: 0;
+}
+
+.sheet .sheet-number {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
 @media print {
   main.song {
     display: none;
@@ -178,31 +210,6 @@ main.song {
 
   .sheet + .sheet {
     break-before: page;
-  }
-
-  .sheet header {
-    flex: none;
-    display: flex;
-    align-items: baseline;
-    gap: 0 12px;
-    overflow: hidden;
-  }
-
-  .sheet h1 {
-    font-size: 14pt;
-    margin: 0;
-  }
-
-  .sheet .artist,
-  .sheet .sheet-number {
-    font-size: 11pt;
-    color: #000;
-    margin: 0;
-  }
-
-  .sheet .sheet-number {
-    margin-left: auto;
-    font-variant-numeric: tabular-nums;
   }
 
   /* The Fit keeps the Lyrics inside this box; clipping only guards against rounding. */
