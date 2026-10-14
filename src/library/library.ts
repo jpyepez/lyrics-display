@@ -55,10 +55,10 @@ export function getSong(id: string): Promise<Song | undefined> {
   return songsRequest('readonly', (songs) => songs.get(id) as IDBRequest<Song | undefined>)
 }
 
-/** All Songs, oldest first. */
+/** All Songs, sorted by title, ignoring case. */
 export async function listSongs(): Promise<Song[]> {
   const all = await songsRequest('readonly', (songs) => songs.getAll() as IDBRequest<Song[]>)
-  return all.sort((a, b) => a.createdAt - b.createdAt)
+  return all.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }))
 }
 
 /** Saves changes to a Song already in the Library. */
@@ -66,4 +66,13 @@ export async function updateSong(song: Song): Promise<Song> {
   const updated: Song = { ...song, updatedAt: Date.now() }
   await songsRequest('readwrite', (songs) => songs.put(updated))
   return updated
+}
+
+export async function deleteSong(id: string): Promise<void> {
+  await songsRequest('readwrite', (songs) => songs.delete(id))
+}
+
+/** Puts a deleted Song back exactly as it was, with its id, Note, Override and times. */
+export async function restoreSong(song: Song): Promise<void> {
+  await songsRequest('readwrite', (songs) => songs.put(song))
 }

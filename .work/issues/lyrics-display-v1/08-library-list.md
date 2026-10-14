@@ -1,7 +1,7 @@
 ---
 slice: 8
 title: "Library list: filter, sort, delete with Undo"
-status: ready
+status: in-progress
 blocked_by: [1]
 parent_prd: lyrics-display-v1
 ---
