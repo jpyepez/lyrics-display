@@ -113,8 +113,7 @@ main {
   margin: 16px 0;
 }
 
-.search .results button,
-.search .results a {
+.search .results button {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;

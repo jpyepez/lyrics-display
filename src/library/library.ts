@@ -72,6 +72,13 @@ export async function addSong(input: NewSong): Promise<Song> {
   return song
 }
 
+/** The Song with this title and artist under the duplicate rule, if the Library has one. */
+export async function findSong(title: string, artist: string): Promise<Song | undefined> {
+  const key = songKey({ title, artist })
+  const all = await songsRequest('readonly', (songs) => songs.getAll() as IDBRequest<Song[]>)
+  return all.find((song) => songKey(song) === key)
+}
+
 export function getSong(id: string): Promise<Song | undefined> {
   return songsRequest('readonly', (songs) => songs.get(id) as IDBRequest<Song | undefined>)
 }

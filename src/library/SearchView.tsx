@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { navigate, routes } from '../app/route'
-import { addSong } from './library'
+import { addSong, findSong } from './library'
 import { searchLyrics, type SearchOutcome, type SearchResult } from './search'
 
 export function SearchView() {
@@ -9,6 +9,7 @@ export function SearchView() {
   const [last, setLast] = useState<{ title: string; artist: string; outcome: SearchOutcome }>()
   /** True while a rate limit asks to wait; search never retries on its own. */
   const [waiting, setWaiting] = useState(false)
+  const [saveError, setSaveError] = useState<string>()
   const outcome = last?.outcome
 
   useEffect(() => {
@@ -30,8 +31,21 @@ export function SearchView() {
   }
 
   async function pick(result: SearchResult, lyrics: string) {
-    const song = await addSong({ title: result.title.trim(), artist: result.artist.trim(), lyrics })
-    navigate(routes.song(song.id))
+    setSaveError(undefined)
+    try {
+      const song = await addSong({ title: result.title.trim(), artist: result.artist.trim(), lyrics })
+      navigate(routes.song(song.id))
+    } catch {
+      setSaveError('Could not save the Song. Try again.')
+    }
+  }
+
+  /** No Lyrics to save: open the Song if the Library has it, otherwise go to paste. */
+  async function pickWithoutLyrics(result: SearchResult) {
+    const title = result.title.trim()
+    const artist = result.artist.trim()
+    const existing = await findSong(title, artist).catch(() => undefined)
+    navigate(existing ? routes.song(existing.id) : routes.pasteFor(title, artist))
   }
 
   return (
@@ -62,14 +76,18 @@ export function SearchView() {
                   <ResultText result={result} />
                 </button>
               ) : (
-                // No Lyrics to save: picking it goes to paste instead of adding an empty Song.
-                <a href={routes.pasteFor(result.title.trim(), result.artist.trim())}>
+                <button type="button" onClick={() => pickWithoutLyrics(result)}>
                   <ResultText result={result} /> <span className="instrumental">Instrumental</span>
-                </a>
+                </button>
               )}
             </li>
           ))}
         </ul>
+      )}
+      {saveError && (
+        <p role="alert" className="error">
+          {saveError}
+        </p>
       )}
       {last && outcome?.kind === 'empty' && (
         <p>

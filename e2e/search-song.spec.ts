@@ -83,7 +83,7 @@ test('picking an instrumental result goes to paste and saves nothing', async ({ 
   await search(page, 'Pebble Drift', '')
   await expect(results(page)).toHaveText([/Pebble Drift.*The Placeholders.*Quiet Hours.*Instrumental/])
 
-  await results(page).nth(0).getByRole('link').click()
+  await results(page).nth(0).getByRole('button').click()
   await expectPasteFormFor(page, 'Pebble Drift', 'The Placeholders')
 
   await page.goto('/')
@@ -162,4 +162,37 @@ test('picking a result already in the Library opens the existing Song instead of
   await expect(page.getByTestId('lyric-line')).toHaveText(['My own harbor line'])
   await page.goto('/')
   await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(1)
+})
+
+test('picking an instrumental result already in the Library opens the existing Song', async ({ page }) => {
+  await stubSearch(page, respondWith([result('pebble DRIFT ', ' The Placeholders', 'Quiet Hours', null)]))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Paste a Song' }).click()
+  await page.getByLabel('Title').fill('Pebble Drift')
+  await page.getByLabel('Artist').fill('The Placeholders')
+  await page.getByLabel('Lyrics').fill('My own pebble line')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Pebble Drift' })).toBeVisible()
+
+  await search(page, 'Pebble Drift', '')
+  await results(page).nth(0).getByRole('button').click()
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Pebble Drift' })).toBeVisible()
+  await expect(page.getByTestId('lyric-line')).toHaveText(['My own pebble line'])
+})
+
+test('a rate limit given as a date waits until that time', async ({ page }) => {
+  const now = new Date('2026-10-15T12:00:00Z')
+  await stubSearch(page, (route) =>
+    route.fulfill({
+      status: 429,
+      headers: { 'retry-after': new Date(now.getTime() + 45_000).toUTCString(), 'access-control-expose-headers': 'retry-after' },
+      json: { message: 'Too many requests' },
+    }),
+  )
+  await page.clock.install({ time: now })
+
+  await search(page, 'Kettle Waltz', '')
+
+  await expect(page.getByRole('alert')).toHaveText('LRCLIB is busy. Try again in 45 seconds, or Paste the Lyrics')
 })
