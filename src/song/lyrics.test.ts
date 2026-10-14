@@ -64,4 +64,11 @@ describe('parseLyrics', () => {
       { lines: ['Second lamp'] },
     ])
   })
+
+  test('an empty or multi-bracket line at the start of a Stanza stays a line of Lyrics', () => {
+    expect(parseLyrics('[ ]\nQuiet now\n\n[low] [high]\nBoth together')).toEqual([
+      { lines: ['[ ]', 'Quiet now'] },
+      { lines: ['[low] [high]', 'Both together'] },
+    ])
+  })
 })

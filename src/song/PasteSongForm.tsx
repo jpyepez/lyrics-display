@@ -1,20 +1,40 @@
 import { useState, type FormEvent } from 'react'
 import { navigate, routes } from '../app/route'
 import { addSong } from '../library/library'
+import type { NewSong } from './song'
+
+function readSong(form: FormData): NewSong {
+  return {
+    title: String(form.get('title')).trim(),
+    artist: String(form.get('artist')).trim(),
+    lyrics: String(form.get('lyrics')),
+  }
+}
+
+function problemWith(song: NewSong): string | undefined {
+  if (!song.title || !song.artist) return 'Title and artist are required.'
+  if (!song.lyrics.trim()) return 'Lyrics are empty.'
+}
 
 export function PasteSongForm() {
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string>()
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const song = readSong(new FormData(event.currentTarget))
+    const problem = problemWith(song)
+    setError(problem)
+    if (problem) return
+
     setSaving(true)
-    const song = await addSong({
-      title: String(form.get('title')).trim(),
-      artist: String(form.get('artist')).trim(),
-      lyrics: String(form.get('lyrics')),
-    })
-    navigate(routes.song(song.id))
+    try {
+      const saved = await addSong(song)
+      navigate(routes.song(saved.id))
+    } catch {
+      setError('Could not save the Song. Try again.')
+      setSaving(false)
+    }
   }
 
   return (
@@ -33,6 +53,11 @@ export function PasteSongForm() {
           Lyrics
           <textarea name="lyrics" required rows={16} spellCheck={false} />
         </label>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
         <div className="actions">
           <a href={routes.library}>Cancel</a>
           <button type="submit" disabled={saving}>

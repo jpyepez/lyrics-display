@@ -49,3 +49,7 @@ _Avoid_: Overflow
 **Override**:
 A per-Song font size or column count that replaces the automatic Fit on Screens.
 _Avoid_: Preference, setting
+
+## Code terms
+
+"View" is fine in code and specs for a UI component (Song view, Library view, Print view). In the domain language, a screenful of a Song is still a Screen, never a view.

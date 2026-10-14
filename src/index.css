@@ -84,3 +84,8 @@ main {
   /* Lyrics are shown exactly as written: keep runs of spaces. */
   white-space: pre-wrap;
 }
+
+.error {
+  color: #b00020;
+  margin: 0;
+}

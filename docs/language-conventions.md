@@ -14,7 +14,7 @@
 
 - The Library lives in IndexedDB behind `src/library/library.ts`. Components never touch `indexedDB` directly; they call the store's async functions (`addSong`, `getSong`, `listSongs`).
 - No global state library. Each view loads what it needs from the store in an effect and keeps it in local state.
-- Navigation is the URL hash (`#/`, `#/paste`, `#/song/<id>`) via `useRoute()` and `routes` in `src/app/route.ts`, so a reload reopens the same view. Build links with `routes`, never by hand.
+- Navigation is the URL hash (`#/`, `#/paste`, `#/song/<id>`) via `useRoute()` and `routes` in `src/app/route.ts`, so a reload reopens the same view. Build links with `routes`, never by hand; `navigate` only accepts a `RouteHash`, which only `routes` produces.
 
 ## TypeScript
 

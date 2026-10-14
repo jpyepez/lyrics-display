@@ -2,10 +2,13 @@ import { useSyncExternalStore } from 'react'
 
 export type Route = { name: 'library' } | { name: 'paste' } | { name: 'song'; id: string }
 
+/** A URL hash for one of the app's routes. Only `routes` makes these. */
+export type RouteHash = string & { readonly __brand: 'RouteHash' }
+
 export const routes = {
-  library: '#/',
-  paste: '#/paste',
-  song: (id: string) => `#/song/${encodeURIComponent(id)}`,
+  library: '#/' as RouteHash,
+  paste: '#/paste' as RouteHash,
+  song: (id: string) => `#/song/${encodeURIComponent(id)}` as RouteHash,
 }
 
 function parseHash(hash: string): Route {
@@ -25,6 +28,6 @@ export function useRoute(): Route {
   return parseHash(hash)
 }
 
-export function navigate(hash: string) {
+export function navigate(hash: RouteHash) {
   window.location.hash = hash
 }

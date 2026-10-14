@@ -47,3 +47,18 @@ async function expectSongLyrics(page: Page) {
     'Hey hey the lamp is low',
   ])
 }
+
+test('Lyrics with only blank lines are not saved', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Paste a Song' }).click()
+  await page.getByLabel('Title').fill('Empty Song')
+  await page.getByLabel('Artist').fill('The Placeholders')
+  await page.getByLabel('Lyrics').fill('  \n\n   \n')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page.getByRole('alert')).toHaveText('Lyrics are empty.')
+
+  await page.getByRole('link', { name: 'Cancel' }).click()
+  await expect(page.getByText('No Songs yet.')).toBeVisible()
+})

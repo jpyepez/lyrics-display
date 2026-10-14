@@ -3,7 +3,7 @@ export type Stanza = {
   lines: string[]
 }
 
-const SECTION_LABEL = /^\s*\[(.+)\]\s*$/
+const SECTION_LABEL = /^\s*\[([^[\]]*\S[^[\]]*)\]\s*$/
 
 export function parseLyrics(lyrics: string): Stanza[] {
   const stanzas: Stanza[] = []
