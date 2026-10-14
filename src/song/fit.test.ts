@@ -35,7 +35,7 @@ describe('fit', () => {
       measurer: fakeMeasurer,
     })
 
-    expect(result).toEqual({ fontSize: 40, columnCount: 1, columns: [song] })
+    expect(result).toEqual({ fontSize: 40, columnCount: 1, screens: [[song]] })
   })
 
   test('a Song too tall for one column gets more columns before a smaller font', () => {
@@ -51,7 +51,7 @@ describe('fit', () => {
       measurer: fakeMeasurer,
     })
 
-    expect(result).toEqual({ fontSize: 40, columnCount: 2, columns: [[a, b, c], [d]] })
+    expect(result).toEqual({ fontSize: 40, columnCount: 2, screens: [[[a, b, c], [d]]] })
   })
 
   test('when a second column would be too narrow for the lines, the font gets smaller', () => {
@@ -67,13 +67,14 @@ describe('fit', () => {
       measurer: fakeMeasurer,
     })
 
-    expect(result).toEqual({ fontSize: 31, columnCount: 1, columns: [song] })
+    expect(result).toEqual({ fontSize: 31, columnCount: 1, screens: [[song]] })
   })
 
-  test('a Song that cannot fit at the minimum font fills the readable columns, the last taking the rest', () => {
-    const song = Array.from({ length: 14 }, (_, i) => stanza(String.fromCharCode(97 + i), 4))
+  test('a Song gets a smaller font before it Spills', () => {
+    const song = Array.from({ length: 10 }, (_, i) => stanza(String.fromCharCode(97 + i), 4))
 
-    // At 20px only two 130px columns are readable, holding 6 Stanzas each. Spill is ticket #03.
+    // Above 25px only one column is readable, and ten Stanzas (49em) need 12px. At 25px two
+    // 125px columns are readable, holding 5 Stanzas each (5 × 100 + 4 × 25 = 600px).
     const result = fit({
       stanzas: song,
       surface: { kind: 'screen', width: 300, height: 600 },
@@ -82,7 +83,49 @@ describe('fit', () => {
       measurer: fakeMeasurer,
     })
 
-    expect(result).toEqual({ fontSize: 20, columnCount: 2, columns: [song.slice(0, 6), song.slice(6)] })
+    expect(result).toEqual({ fontSize: 25, columnCount: 2, screens: [[song.slice(0, 5), song.slice(5)]] })
+  })
+
+  test('a Song that cannot fit one Screen at the minimum font Spills onto more Screens', () => {
+    const song = Array.from({ length: 14 }, (_, i) => stanza(String.fromCharCode(97 + i), 4))
+
+    // At 20px only two 130px columns are readable, holding 6 Stanzas each (6 × 80 + 5 × 20
+    // = 580px of 600px), so the last two Stanzas go to a second Screen.
+    const result = fit({
+      stanzas: song,
+      surface: { kind: 'screen', width: 300, height: 600 },
+      minFontSize: 20,
+      maxFontSize: 40,
+      measurer: fakeMeasurer,
+    })
+
+    expect(result).toEqual({
+      fontSize: 20,
+      columnCount: 2,
+      screens: [[song.slice(0, 6), song.slice(6, 12)], [song.slice(12)]],
+    })
+  })
+
+  test('a Stanza taller than a whole column at the minimum font breaks between lines, only where a column is full', () => {
+    const [a, c] = [stanza('a', 2), stanza('c', 2)]
+    const b = { sectionLabel: 'Bridge', lines: stanza('b', 15).lines }
+
+    // b is 16em tall, over a 200px column even at 20px. After a (40px) and the gap, its
+    // label and 6 lines fill the first column (140px); the next 9 lines fill the second
+    // (180px), and c (40px) no longer fits there.
+    const result = fit({
+      stanzas: [a, b, c],
+      surface: { kind: 'screen', width: 1000, height: 200 },
+      minFontSize: 20,
+      maxFontSize: 40,
+      measurer: fakeMeasurer,
+    })
+
+    expect(result).toEqual({
+      fontSize: 20,
+      columnCount: 7,
+      screens: [[[a, { sectionLabel: 'Bridge', lines: b.lines.slice(0, 6) }], [{ lines: b.lines.slice(6) }], [c]]],
+    })
   })
 
   test('a line wider than the whole surface makes the font smaller rather than wrap', () => {
@@ -97,7 +140,7 @@ describe('fit', () => {
       measurer: fakeMeasurer,
     })
 
-    expect(result).toEqual({ fontSize: 20, columnCount: 1, columns: [song] })
+    expect(result).toEqual({ fontSize: 20, columnCount: 1, screens: [[song]] })
   })
 
   test('a Stanza that does not fit the rest of a column moves whole to the next', () => {
@@ -112,7 +155,7 @@ describe('fit', () => {
       measurer: fakeMeasurer,
     })
 
-    expect(result).toEqual({ fontSize: 40, columnCount: 2, columns: [[a], [b, c]] })
+    expect(result).toEqual({ fontSize: 40, columnCount: 2, screens: [[[a], [b, c]]] })
   })
 
   test('the same Song fits a Screen and a Sheet differently', () => {
@@ -136,7 +179,7 @@ describe('fit', () => {
       measurer: fakeMeasurer,
     })
 
-    expect(onScreen).toEqual({ fontSize: 57, columnCount: 3, columns: [[a, b, c], [d, e, f], [g, h]] })
-    expect(onSheet).toEqual({ fontSize: 52, columnCount: 2, columns: [[a, b, c, d], [e, f, g, h]] })
+    expect(onScreen).toEqual({ fontSize: 57, columnCount: 3, screens: [[[a, b, c], [d, e, f], [g, h]]] })
+    expect(onSheet).toEqual({ fontSize: 52, columnCount: 2, screens: [[[a, b, c, d], [e, f, g, h]]] })
   })
 })

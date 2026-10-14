@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
 import { routes } from '../app/route'
 import { getSong } from '../library/library'
 import { COLUMN_GAP_EM, fit, STANZA_GAP_EM } from './fit'
@@ -33,6 +33,37 @@ function useElementSize(): [(element: HTMLElement | null) => void, Size | undefi
   return [setElement, size]
 }
 
+/** Keys that turn the Screen; a Bluetooth page-turner pedal sends one of these. */
+const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown', 'PageDown', ' '])
+const PREVIOUS_KEYS = new Set(['ArrowLeft', 'ArrowUp', 'PageUp'])
+
+/** Moves between `count` Screens by key; the index stays within them when `count` changes. */
+function useScreenIndex(count: number): [number, (step: number) => void] {
+  const [wanted, setWanted] = useState(0)
+  const turn = useCallback(
+    (step: number) => setWanted((old) => clampIndex(clampIndex(old, count) + step, count)),
+    [count],
+  )
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      const step = NEXT_KEYS.has(event.key) ? 1 : PREVIOUS_KEYS.has(event.key) ? -1 : 0
+      if (!step) return
+      event.preventDefault()
+      turn(step)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [turn])
+
+  return [clampIndex(wanted, count), turn]
+}
+
+function clampIndex(index: number, count: number): number {
+  return Math.min(Math.max(0, index), Math.max(0, count - 1))
+}
+
 export function SongView({ id }: { id: string }) {
   const [song, setSong] = useState<Song | null>()
   const [screenRef, screen] = useElementSize()
@@ -56,6 +87,8 @@ export function SongView({ id }: { id: string }) {
       }),
     [stanzas, screen, measurer],
   )
+  const screenCount = screenFit?.screens.length ?? 0
+  const [screenIndex, turn] = useScreenIndex(screenCount)
 
   if (song === undefined) return null
   if (song === null) {
@@ -70,22 +103,32 @@ export function SongView({ id }: { id: string }) {
   const lyricsStyle: CSSProperties = screenFit ? { fontSize: screenFit.fontSize, gap: `${COLUMN_GAP_EM}em` } : {}
   const columnStyle: CSSProperties = { gap: `${STANZA_GAP_EM}em` }
 
+  /** A tap on the right half shows the next Screen, on the left half the previous one. */
+  function onScreenClick(event: MouseEvent<HTMLElement>) {
+    const box = event.currentTarget.getBoundingClientRect()
+    turn(event.clientX >= box.left + box.width / 2 ? 1 : -1)
+  }
+
   return (
     <main className="song">
       <header>
         <a href={routes.library}>Library</a>
         <h1>{song.title}</h1>
         <p className="artist">{song.artist}</p>
+        {/* Always laid out, so the Screen's height does not depend on whether the Song Spills. */}
+        <p role="status" className="screen-indicator" style={screenCount < 2 ? { visibility: 'hidden' } : undefined}>
+          {screenIndex + 1}/{screenCount}
+        </p>
       </header>
-      <div className="screen" ref={screenRef}>
+      <div className="screen" ref={screenRef} onClick={onScreenClick}>
         <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
-          {screenFit?.columns.map((column, i) => (
+          {screenFit?.screens[screenIndex]?.map((column, i) => (
             <div key={i} className="column" style={columnStyle}>
-              {column.map((stanza) => (
-                <div role="group" key={stanzas.indexOf(stanza)} className="stanza">
+              {column.map((stanza, j) => (
+                <div role="group" key={j} className="stanza">
                   {stanza.sectionLabel && <h2 className="section-label">{stanza.sectionLabel}</h2>}
-                  {stanza.lines.map((line, j) => (
-                    <p key={j} className="line" data-testid="lyric-line">
+                  {stanza.lines.map((line, k) => (
+                    <p key={k} className="line" data-testid="lyric-line">
                       {line}
                     </p>
                   ))}

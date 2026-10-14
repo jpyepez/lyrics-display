@@ -23,11 +23,12 @@ export type FitInput = {
   measurer: TextMeasurer
 }
 
-/** A Fit: one font size and the Stanzas placed column by column, in order. */
+/** A Fit: one font size and the Stanzas placed column by column on one or more surfaces, in order. */
 export type Fit = {
   fontSize: number
   columnCount: number
-  columns: Stanza[][]
+  /** Each surface's columns: one Screen or Sheet unless the Song Spills. */
+  screens: Stanza[][][]
 }
 
 /** Space between Stanzas in a column, in em. The Song view uses the same value. */
@@ -36,13 +37,14 @@ export const STANZA_GAP_EM = 1
 export const COLUMN_GAP_EM = 2
 
 /**
- * Lays out a Song on one surface. Tries the largest font in one column first, then more
- * columns while they stay readable, then a smaller font, one px at a time, down to the
- * minimum. A column is readable when the widest line of every Stanza fits it unwrapped.
- * A Stanza is never split across columns.
+ * Lays out a Song. Tries the largest font in one column first, then more columns while
+ * they stay readable, then a smaller font, one px at a time, down to the minimum. A column
+ * is readable when the widest line of every Stanza fits it unwrapped. A Stanza is never
+ * split across columns.
  *
- * A Song that cannot fit at the minimum font fills the readable columns there, the last
- * column taking the rest, until Spill arrives (ticket #03).
+ * A Song that cannot fit one surface at the minimum font Spills: it fills the readable
+ * columns there and carries on onto as many more surfaces as it needs. Only then may a
+ * Stanza taller than a whole column break between lines, and only where a column is full.
  */
 export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer }: FitInput): Fit {
   let readableColumnCount = 1
@@ -53,12 +55,16 @@ export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer }: Fi
       if (columnWidth < widest) break
       readableColumnCount = columnCount
       const columns = pack(stanzas, columnCount, surface.height, fontSize, columnWidth, measurer)
-      if (columns) return { fontSize, columnCount, columns }
+      if (columns) return { fontSize, columnCount, screens: [columns] }
     }
   }
   const columnWidth = columnWidthFor(surface, readableColumnCount, minFontSize)
-  const columns = pack(stanzas, readableColumnCount, surface.height, minFontSize, columnWidth, measurer, true)
-  return { fontSize: minFontSize, columnCount: readableColumnCount, columns: columns ?? [stanzas] }
+  const columns = pack(stanzas, Infinity, surface.height, minFontSize, columnWidth, measurer, true) ?? []
+  const screens: Stanza[][][] = []
+  for (let i = 0; i < columns.length; i += readableColumnCount) {
+    screens.push(columns.slice(i, i + readableColumnCount))
+  }
+  return { fontSize: minFontSize, columnCount: readableColumnCount, screens }
 }
 
 function columnWidthFor(surface: Surface, columnCount: number, fontSize: number): number {
@@ -75,8 +81,8 @@ function fontSizes(max: number, min: number): number[] {
 
 /**
  * Places the Stanzas in order, filling each column before starting the next.
- * Undefined when they need more than `columnCount` columns, unless `lastTakesRest`,
- * which puts whatever is left in the last column, however tall.
+ * Undefined when they need more than `columnCount` columns, or when a Stanza is taller
+ * than a column, unless `breakOversized`.
  */
 function pack(
   stanzas: Stanza[],
@@ -85,25 +91,67 @@ function pack(
   fontSize: number,
   columnWidth: number,
   measurer: TextMeasurer,
-  lastTakesRest = false,
+  breakOversized = false,
 ): Stanza[][] | undefined {
   const gap = STANZA_GAP_EM * fontSize
   const columns: Stanza[][] = []
   /** Height taken in the current column; none open yet, so the first Stanza opens one. */
   let usedHeight = Infinity
-  for (const stanza of stanzas) {
-    const stanzaHeight = measurer.height(stanza, fontSize, columnWidth)
-    if (stanzaHeight > height && !lastTakesRest) return undefined
-    const full = usedHeight + gap + stanzaHeight > height
-    if (full && columns.length < columnCount) {
-      columns.push([stanza])
-      usedHeight = stanzaHeight
-    } else if (full && !lastTakesRest) {
-      return undefined
-    } else {
+  const heightOf = (stanza: Stanza) => measurer.height(stanza, fontSize, columnWidth)
+
+  /** Adds a Stanza after the last, in a new column if it does not fit; false when out of columns. */
+  function place(stanza: Stanza): boolean {
+    const stanzaHeight = heightOf(stanza)
+    if (usedHeight + gap + stanzaHeight <= height) {
       columns[columns.length - 1].push(stanza)
       usedHeight += gap + stanzaHeight
+      return true
+    }
+    if (columns.length === columnCount) return false
+    columns.push([stanza])
+    usedHeight = stanzaHeight
+    return true
+  }
+
+  /** End of the longest run of lines from `start` that fits `room`; `start` if none does. */
+  function longestPart(stanza: Stanza, start: number, room: number): number {
+    let end = start
+    while (end < stanza.lines.length && heightOf(part(stanza, start, end + 1)) <= room) end++
+    return end
+  }
+
+  for (const stanza of stanzas) {
+    if (heightOf(stanza) <= height) {
+      if (!place(stanza)) return undefined
+      continue
+    }
+    if (!breakOversized) return undefined
+    for (let start = 0; start < stanza.lines.length; ) {
+      // Fill the rest of this column, else a fresh one; a line taller than a column still gets one.
+      let end = longestPart(stanza, start, height - usedHeight - gap)
+      if (end === start) end = Math.max(start + 1, longestPart(stanza, start, height))
+      if (!place(part(stanza, start, end))) return undefined
+      start = end
+      // The column is full where the Stanza breaks: the rest starts the next one.
+      if (start < stanza.lines.length) usedHeight = Infinity
     }
   }
   return columns
+}
+
+/** Parts are kept per Stanza so each one is the same object on every Fit, for measurers that cache by Stanza. */
+const partsByStanza = new WeakMap<Stanza, Map<string, Stanza>>()
+
+/** Lines `start` to `end` of a Stanza; the Section Label stays on the part that starts it. */
+function part(stanza: Stanza, start: number, end: number): Stanza {
+  let byRange = partsByStanza.get(stanza)
+  if (!byRange) partsByStanza.set(stanza, (byRange = new Map()))
+  const key = `${start}-${end}`
+  let result = byRange.get(key)
+  if (!result) {
+    const lines = stanza.lines.slice(start, end)
+    result = start === 0 && stanza.sectionLabel ? { sectionLabel: stanza.sectionLabel, lines } : { lines }
+    byRange.set(key, result)
+  }
+  return result
 }
