@@ -1,8 +1,29 @@
 # Language Conventions
 
-<!-- TODO: fill in project-specific TypeScript/React conventions here -->
+## Layout
 
-Suggested sections:
-- State management and where Library state lives
-- Component vs. pure-function boundaries (keep layout math out of components?)
-- Patterns lint and tsc don't enforce
+- Code is grouped by domain area, not by kind: `src/song/` (Song type, Lyrics parser, Song views), `src/library/` (Library store, Library list), `src/app/` (shell and routing).
+- Names follow `CONTEXT.md`: Song, Lyrics, Stanza, Section Label, Library, Screen, Sheet, Fit. Not verse, block, track or page.
+
+## Pure functions vs components
+
+- Logic lives in pure, framework-free modules (`lyrics.ts`, and later the Fit engine). Components call them and render the result; no parsing or layout math inside JSX.
+- A Song stores its raw Lyrics string; Stanzas are derived by `parseLyrics` at render time, never stored.
+
+## State
+
+- The Library lives in IndexedDB behind `src/library/library.ts`. Components never touch `indexedDB` directly; they call the store's async functions (`addSong`, `getSong`, `listSongs`).
+- No global state library. Each view loads what it needs from the store in an effect and keeps it in local state.
+- Navigation is the URL hash (`#/`, `#/paste`, `#/song/<id>`) via `useRoute()` and `routes` in `src/app/route.ts`, so a reload reopens the same view. Build links with `routes`, never by hand.
+
+## TypeScript
+
+- `erasableSyntaxOnly` is on: no `enum`, no namespaces, no constructor parameter properties. Use string-literal unions and plain objects.
+- `type` over `interface`. Use `import type` for type-only imports (`verbatimModuleSyntax`).
+- Named exports only; no default exports in `src`.
+
+## React
+
+- Function components, React 19. The app runs under `StrictMode`, so effects must be safe to run twice.
+- Forms read values with `FormData` on submit rather than one `useState` per field, unless a field needs live validation.
+- Text that must keep its spacing (Lyrics lines) gets `white-space: pre-wrap`.

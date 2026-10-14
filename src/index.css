@@ -1,0 +1,86 @@
+:root {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.4;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  padding: 16px;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.library ul {
+  list-style: none;
+  padding: 0;
+}
+
+.library li a {
+  display: block;
+  padding: 8px 0;
+}
+
+.artist {
+  color: #555;
+}
+
+.paste form {
+  display: grid;
+  gap: 12px;
+}
+
+.paste label {
+  display: grid;
+  gap: 4px;
+}
+
+.paste input,
+.paste textarea {
+  font: inherit;
+  font-size: 16px;
+}
+
+.paste .actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.song header h1 {
+  font-size: 1rem;
+  margin: 8px 0 0;
+}
+
+.song header .artist {
+  font-size: 0.875rem;
+  margin: 0 0 16px;
+}
+
+.lyrics {
+  font-size: 20px;
+}
+
+.stanza {
+  margin-bottom: 1em;
+}
+
+.section-label {
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+  margin: 0 0 0.25em;
+}
+
+.line {
+  margin: 0;
+  /* Lyrics are shown exactly as written: keep runs of spaces. */
+  white-space: pre-wrap;
+}
