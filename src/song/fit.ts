@@ -1,4 +1,5 @@
 import type { Stanza } from './lyrics'
+import type { Override } from './song'
 
 /** The surface a Song is shown on: a Screen in the app or a printed Sheet. Sizes in CSS px. */
 export type Surface = {
@@ -21,6 +22,8 @@ export type FitInput = {
   minFontSize: number
   maxFontSize: number
   measurer: TextMeasurer
+  /** Used for Screens only; a Sheet always gets the automatic Fit. */
+  override?: Override
 }
 
 /** A Fit: one font size and the Stanzas placed column by column on one or more surfaces, in order. */
@@ -46,26 +49,50 @@ export const COLUMN_GAP_EM = 2
  * columns there and carries on onto as many more surfaces as it needs. Only then may a
  * Stanza taller than a whole column break between lines, only where a column is full. It
  * starts in the room left in the current column unless that would cost an extra break.
+ *
+ * An Override fixes the font size, the column count, or both, and the Fit works out the
+ * rest the same way. A Song that fits a fixed column count is spread across all of them.
+ * A Song that does not fit Spills at the fixed font size, or else the minimum, and in the
+ * fixed column count, readable or not.
  */
-export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer }: FitInput): Fit {
-  let readableColumnCount = 1
-  for (const fontSize of fontSizes(maxFontSize, minFontSize)) {
-    const widest = Math.max(0, ...stanzas.map((stanza) => measurer.width(stanza, fontSize)))
-    for (let columnCount = 1; ; columnCount++) {
+export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer, override = {} }: FitInput): Fit {
+  const sizes = override.fontSize ? [override.fontSize] : fontSizes(maxFontSize, minFontSize)
+  for (const fontSize of sizes) {
+    const readable = readableColumnCount(stanzas, surface, fontSize, measurer)
+    for (let columnCount = override.columnCount ?? 1; columnCount <= readable; columnCount++) {
       const columnWidth = columnWidthFor(surface, columnCount, fontSize)
-      if (columnWidth < widest) break
-      readableColumnCount = columnCount
       const columns = pack(stanzas, columnCount, surface.height, fontSize, columnWidth, measurer)
+      if (columns && override.columnCount) {
+        const spread = spreadOut(stanzas, columnCount, surface.height, fontSize, columnWidth, measurer)
+        return { fontSize, columnCount, surfaces: [spread] }
+      }
       if (columns) return { fontSize, columnCount, surfaces: [columns] }
+      if (override.columnCount) break
     }
   }
-  const columnWidth = columnWidthFor(surface, readableColumnCount, minFontSize)
-  const columns = pack(stanzas, Infinity, surface.height, minFontSize, columnWidth, measurer, true) ?? []
+  const fontSize = sizes.at(-1)!
+  const columnCount =
+    override.columnCount ?? Math.max(1, readableColumnCount(stanzas, surface, fontSize, measurer))
+  const columnWidth = columnWidthFor(surface, columnCount, fontSize)
+  const columns = pack(stanzas, Infinity, surface.height, fontSize, columnWidth, measurer, true) ?? []
   const surfaces: Stanza[][][] = []
-  for (let i = 0; i < columns.length; i += readableColumnCount) {
-    surfaces.push(columns.slice(i, i + readableColumnCount))
+  for (let i = 0; i < columns.length; i += columnCount) {
+    surfaces.push(columns.slice(i, i + columnCount))
   }
-  return { fontSize: minFontSize, columnCount: readableColumnCount, surfaces }
+  return { fontSize, columnCount, surfaces }
+}
+
+/** How many columns a surface holds at a font size with every Stanza's widest line unwrapped; 0 when not even one. */
+export function readableColumnCount(
+  stanzas: Stanza[],
+  surface: Surface,
+  fontSize: number,
+  measurer: TextMeasurer,
+): number {
+  const widest = Math.max(0, ...stanzas.map((stanza) => measurer.width(stanza, fontSize)))
+  let count = 0
+  while (columnWidthFor(surface, count + 1, fontSize) >= widest) count++
+  return count
 }
 
 function columnWidthFor(surface: Surface, columnCount: number, fontSize: number): number {
@@ -78,6 +105,28 @@ function fontSizes(max: number, min: number): number[] {
   for (let size = max; size > min; size--) sizes.push(size)
   sizes.push(min)
   return sizes
+}
+
+/**
+ * Packs Stanzas that fit `columnCount` columns into the shortest columns that hold them,
+ * so a column count Override shows that many columns rather than leaving the last ones empty.
+ */
+function spreadOut(
+  stanzas: Stanza[],
+  columnCount: number,
+  height: number,
+  fontSize: number,
+  columnWidth: number,
+  measurer: TextMeasurer,
+): Stanza[][] {
+  // 30 halvings narrow the height to a millionth of a px, finer than any two packings differ.
+  let [tooShort, tallEnough] = [0, height]
+  for (let i = 0; i < 30; i++) {
+    const middle = (tooShort + tallEnough) / 2
+    if (pack(stanzas, columnCount, middle, fontSize, columnWidth, measurer)) tallEnough = middle
+    else tooShort = middle
+  }
+  return pack(stanzas, columnCount, tallEnough, fontSize, columnWidth, measurer)!
 }
 
 /**

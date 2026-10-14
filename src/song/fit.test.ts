@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { fit, type TextMeasurer } from './fit'
+import { fit, readableColumnCount, type TextMeasurer } from './fit'
 import type { Stanza } from './lyrics'
 
 /**
@@ -202,5 +202,111 @@ describe('fit', () => {
 
     expect(onScreen).toEqual({ fontSize: 57, columnCount: 3, surfaces: [[[a, b, c], [d, e, f], [g, h]]] })
     expect(onSheet).toEqual({ fontSize: 52, columnCount: 2, surfaces: [[[a, b, c, d], [e, f, g, h]]] })
+  })
+
+  describe('with an Override', () => {
+    test('a font size Override replaces the largest font that fits', () => {
+      const song = [stanza('a', 4), stanza('b', 4)]
+
+      // The automatic Fit would be 40px (9em = 360px tall); the Override asks for 30px.
+      const result = fit({
+        stanzas: song,
+        surface: { kind: 'screen', width: 1000, height: 600 },
+        minFontSize: 20,
+        maxFontSize: 40,
+        measurer: fakeMeasurer,
+        override: { fontSize: 30 },
+      })
+
+      expect(result).toEqual({ fontSize: 30, columnCount: 1, surfaces: [[song]] })
+    })
+
+    test('a font size Override too large for one Screen Spills at that size', () => {
+      const song = Array.from({ length: 10 }, (_, i) => stanza(String.fromCharCode(97 + i), 4))
+
+      // The automatic Fit is 25px in two columns. At 30px two columns are 120px wide, under
+      // a 150px line, so one column holds 4 Stanzas (4 × 120 + 3 × 30 = 570px of 600px).
+      const result = fit({
+        stanzas: song,
+        surface: { kind: 'screen', width: 300, height: 600 },
+        minFontSize: 20,
+        maxFontSize: 40,
+        measurer: fakeMeasurer,
+        override: { fontSize: 30 },
+      })
+
+      expect(result).toEqual({
+        fontSize: 30,
+        columnCount: 1,
+        surfaces: [[song.slice(0, 4)], [song.slice(4, 8)], [song.slice(8)]],
+      })
+    })
+
+    test('a column count Override with fewer columns gets the largest font that fits them', () => {
+      const [a, b, c, d, e, f, g, h] = 'abcdefgh'.split('').map((name) => stanza(name, 4))
+
+      // The automatic Fit is 57px in three columns. Two columns of four Stanzas are 19em
+      // tall: 42px is the largest whole size within 800px.
+      const result = fit({
+        stanzas: [a, b, c, d, e, f, g, h],
+        surface: { kind: 'screen', width: 1280, height: 800 },
+        minFontSize: 20,
+        maxFontSize: 72,
+        measurer: fakeMeasurer,
+        override: { columnCount: 2 },
+      })
+
+      expect(result).toEqual({ fontSize: 42, columnCount: 2, surfaces: [[[a, b, c, d], [e, f, g, h]]] })
+    })
+
+    test('a column count Override with more columns spreads the Stanzas across them', () => {
+      const [a, b, c] = [stanza('a', 2), stanza('b', 2), stanza('c', 2)]
+
+      // At the largest font all three Stanzas fit one column (8em = 320px). Spread over two,
+      // the shortest tallest column is a and b: 2 + 1 + 2 = 5em = 200px.
+      const result = fit({
+        stanzas: [a, b, c],
+        surface: { kind: 'screen', width: 1000, height: 600 },
+        minFontSize: 20,
+        maxFontSize: 40,
+        measurer: fakeMeasurer,
+        override: { columnCount: 2 },
+      })
+
+      expect(result).toEqual({ fontSize: 40, columnCount: 2, surfaces: [[[a, b], [c]]] })
+    })
+
+    test('a column count Override too few for one Screen Spills at the minimum font', () => {
+      const song = Array.from({ length: 14 }, (_, i) => stanza(String.fromCharCode(97 + i), 4))
+
+      // The automatic Fit Spills in two columns. One 600px column at 20px holds 6 Stanzas
+      // (6 × 80 + 5 × 20 = 580px), so the Song takes three Screens.
+      const result = fit({
+        stanzas: song,
+        surface: { kind: 'screen', width: 300, height: 600 },
+        minFontSize: 20,
+        maxFontSize: 40,
+        measurer: fakeMeasurer,
+        override: { columnCount: 1 },
+      })
+
+      expect(result).toEqual({
+        fontSize: 20,
+        columnCount: 1,
+        surfaces: [[song.slice(0, 6)], [song.slice(6, 12)], [song.slice(12)]],
+      })
+    })
+  })
+})
+
+describe('readableColumnCount', () => {
+  test('counts the columns at a font size that still hold the widest line unwrapped', () => {
+    const song = [stanza('a', 4), { lines: ['short'] }]
+
+    // 10 characters at 25px are 125px. Two columns of 300px are (300 − 50) / 2 = 125px
+    // wide; three are (300 − 100) / 3 = 67px.
+    const count = readableColumnCount(song, { kind: 'screen', width: 300, height: 600 }, 25, fakeMeasurer)
+
+    expect(count).toBe(2)
   })
 })

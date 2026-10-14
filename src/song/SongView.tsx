@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
 import { routes } from '../app/route'
-import { getSong } from '../library/library'
-import { COLUMN_GAP_EM, fit, STANZA_GAP_EM } from './fit'
+import { getSong, updateSong } from '../library/library'
+import { COLUMN_GAP_EM, fit, readableColumnCount, STANZA_GAP_EM, type Fit } from './fit'
 import { parseLyrics } from './lyrics'
 import { clampScreenIndex, keyStep, tapStep } from './navigation'
 import { createDomMeasurer } from './measure'
-import type { Song } from './song'
+import type { Override, Song } from './song'
 
 /**
  * Smallest Screen font, the same on desktop and phone: 20px reads from a playing
@@ -13,6 +13,8 @@ import type { Song } from './song'
  */
 const SCREEN_MIN_FONT_SIZE = 20
 const SCREEN_MAX_FONT_SIZE = 72
+/** How much one press of Smaller or Larger text changes the font size, in px. */
+const FONT_SIZE_STEP = 2
 
 type Size = { width: number; height: number }
 
@@ -76,8 +78,9 @@ export function SongView({ id }: { id: string }) {
         minFontSize: SCREEN_MIN_FONT_SIZE,
         maxFontSize: SCREEN_MAX_FONT_SIZE,
         measurer,
+        override: song?.override,
       }),
-    [stanzas, screen, measurer],
+    [stanzas, screen, measurer, song?.override],
   )
   const screenCount = screenFit?.surfaces.length ?? 0
   const [screenIndex, turn] = useScreenIndex(screenCount)
@@ -95,6 +98,14 @@ export function SongView({ id }: { id: string }) {
   const lyricsStyle: CSSProperties = screenFit ? { fontSize: screenFit.fontSize, gap: `${COLUMN_GAP_EM}em` } : {}
   const columnStyle: CSSProperties = { gap: `${STANZA_GAP_EM}em` }
 
+  /** Saves the Override on the Song and shows it once saved; none means back to auto. */
+  function saveOverride(override?: Override) {
+    if (!song) return
+    const next: Song = { ...song, override }
+    if (!override) delete next.override
+    updateSong(next).then(setSong)
+  }
+
   function onScreenClick(event: MouseEvent<HTMLElement>) {
     turn(tapStep(event.clientX, event.currentTarget.getBoundingClientRect()))
   }
@@ -109,6 +120,19 @@ export function SongView({ id }: { id: string }) {
         <p role="status" className="screen-indicator" style={screenCount < 2 ? { visibility: 'hidden' } : undefined}>
           {screenIndex + 1}/{screenCount}
         </p>
+        {screen && screenFit && (
+          <OverrideControls
+            fit={screenFit}
+            override={song.override}
+            maxColumnCount={readableColumnCount(
+              stanzas,
+              { kind: 'screen', ...screen },
+              song.override?.fontSize ?? SCREEN_MIN_FONT_SIZE,
+              measurer,
+            )}
+            onChange={saveOverride}
+          />
+        )}
       </header>
       <div className="screen" ref={screenRef} onClick={onScreenClick}>
         <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
@@ -129,5 +153,71 @@ export function SongView({ id }: { id: string }) {
         </article>
       </div>
     </main>
+  )
+}
+
+type OverrideControlsProps = {
+  fit: Fit
+  override: Override | undefined
+  /** The most columns that stay readable at the smallest font the Override allows. */
+  maxColumnCount: number
+  onChange: (override?: Override) => void
+}
+
+/** Steps the font size or column count from what the Screen shows now, or resets to the automatic Fit. */
+function OverrideControls({ fit, override, maxColumnCount, onChange }: OverrideControlsProps) {
+  const { fontSize, columnCount } = fit
+
+  /** Applies the Override, or none for auto; `detail` is 0 when the button was pressed by key. */
+  function change(event: MouseEvent<HTMLButtonElement>, next?: Override) {
+    // After a tap or click, give the keys back to the Screen so a page-turner pedal still works.
+    if (event.detail > 0) event.currentTarget.blur()
+    onChange(next)
+  }
+
+  return (
+    <div role="group" aria-label="Override" className="override">
+      <span aria-hidden="true">Text</span>
+      <button
+        type="button"
+        aria-label="Smaller text"
+        disabled={fontSize <= SCREEN_MIN_FONT_SIZE}
+        onClick={(event) => change(event, { ...override, fontSize: Math.max(SCREEN_MIN_FONT_SIZE, fontSize - FONT_SIZE_STEP) })}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        aria-label="Larger text"
+        disabled={fontSize >= SCREEN_MAX_FONT_SIZE}
+        onClick={(event) => change(event, { ...override, fontSize: Math.min(SCREEN_MAX_FONT_SIZE, fontSize + FONT_SIZE_STEP) })}
+      >
+        +
+      </button>
+      <span aria-hidden="true">Columns</span>
+      <button
+        type="button"
+        aria-label="Fewer columns"
+        disabled={columnCount <= 1}
+        onClick={(event) => change(event, { ...override, columnCount: columnCount - 1 })}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        aria-label="More columns"
+        disabled={columnCount >= maxColumnCount}
+        onClick={(event) => change(event, { ...override, columnCount: columnCount + 1 })}
+      >
+        +
+      </button>
+      <button
+        type="button"
+        disabled={!override}
+        onClick={(event) => change(event)}
+      >
+        Reset to auto
+      </button>
+    </div>
   )
 }

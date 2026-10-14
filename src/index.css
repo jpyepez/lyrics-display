@@ -85,6 +85,29 @@ main.song {
   font-variant-numeric: tabular-nums;
 }
 
+/* Override controls sit at the end of the header, outside the Screen's tap zones. */
+.song header .override {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: #555;
+}
+
+.song header .override span:not(:first-child) {
+  margin-left: 8px;
+}
+
+.song header .override button {
+  font: inherit;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.song header .override button:last-child {
+  margin-left: 8px;
+}
+
 /* The Fit keeps every Screen inside this box; a Song that needs more Spills to the next Screen. */
 .screen {
   flex: 1;

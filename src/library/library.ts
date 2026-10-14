@@ -24,13 +24,24 @@ function openDb(): Promise<IDBDatabase> {
   return db
 }
 
-/** Runs one request against the songs object store in its own transaction. */
+/**
+ * Runs one request against the songs object store in its own transaction. A write settles
+ * once the transaction commits, so a reload right after it cannot lose it.
+ */
 async function songsRequest<T>(
   mode: IDBTransactionMode,
   request: (songs: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
-  const songs = (await openDb()).transaction(SONGS, mode).objectStore(SONGS)
-  return settle(request(songs))
+  const transaction = (await openDb()).transaction(SONGS, mode)
+  const result = settle(request(transaction.objectStore(SONGS)))
+  if (mode === 'readonly') return result
+  const committed = new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+    transaction.onabort = () => reject(transaction.error)
+  })
+  const [value] = await Promise.all([result, committed])
+  return value
 }
 
 export async function addSong(input: NewSong): Promise<Song> {
@@ -48,4 +59,11 @@ export function getSong(id: string): Promise<Song | undefined> {
 export async function listSongs(): Promise<Song[]> {
   const all = await songsRequest('readonly', (songs) => songs.getAll() as IDBRequest<Song[]>)
   return all.sort((a, b) => a.createdAt - b.createdAt)
+}
+
+/** Saves changes to a Song already in the Library. */
+export async function updateSong(song: Song): Promise<Song> {
+  const updated: Song = { ...song, updatedAt: Date.now() }
+  await songsRequest('readwrite', (songs) => songs.put(updated))
+  return updated
 }
