@@ -13,3 +13,7 @@ parent_prd: lyrics-display-v1
 - [ ] Next/previous by arrow keys, Page Up/Down and space
 - [ ] Next/previous by tapping the right/left side
 - [ ] Playwright tests cover key and tap navigation on a long Song
+
+## Comments
+
+- From #02: two stopgaps hold the place of Spill and should be replaced, not extended. In `src/song/fit.ts`, a Song that cannot fit at the minimum font fills the readable columns and the last one takes the rest (`lastTakesRest`). In `src/index.css`, `.screen` has `overflow-y: auto` so that last column can scroll.
