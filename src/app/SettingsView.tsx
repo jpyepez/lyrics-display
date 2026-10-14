@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { downloadLibraryFile } from '../library/backup'
+import { EXPORT_FAILED, useExportLibrary } from '../library/backup'
 import { importLibrary, type ImportResult } from '../library/library'
 import { LibraryFileError } from '../library/libraryFile'
 import type { Orientation, PaperSetting, PaperSize } from '../song/sheet'
@@ -22,17 +22,19 @@ const ORIENTATION_OPTIONS: { value: Orientation; label: string }[] = [
  */
 const isFirefox = navigator.userAgent.includes('Firefox/')
 
-const songs = (count: number) => `${count} ${count === 1 ? 'Song' : 'Songs'}`
+/** "1 Song", "2 Songs" and so on. */
+const countOf = (count: number, noun: string, plural: string) => `${count} ${count === 1 ? noun : plural}`
 
 /** What the user is told after an import. */
 function describeImport({ added, skipped }: ImportResult): string {
-  return `Added ${songs(added)}, skipped ${skipped} already in the Library.`
+  return `Added ${countOf(added, 'Song', 'Songs')}, skipped ${countOf(skipped, 'duplicate', 'duplicates')}.`
 }
 
 export function SettingsView() {
   const paper = usePaperSetting()
   const [saveFailed, setSaveFailed] = useState(false)
-  const [imported, setImported] = useState<string>()
+  const [importMessage, setImportMessage] = useState<string>()
+  const { exportFile, exportFailed } = useExportLibrary()
   const [importError, setImportError] = useState<string>()
 
   /** Saves a change as soon as it is picked; there is no Save button. */
@@ -49,10 +51,10 @@ export function SettingsView() {
     const input = event.currentTarget
     const file = input.files?.[0]
     if (!file) return
-    setImported(undefined)
+    setImportMessage(undefined)
     setImportError(undefined)
     try {
-      setImported(describeImport(await importLibrary(await file.text())))
+      setImportMessage(describeImport(await importLibrary(await file.text())))
     } catch (error) {
       const reason = error instanceof LibraryFileError ? error.message : 'The file could not be read or saved.'
       setImportError(`${reason} Your Library is unchanged.`)
@@ -109,7 +111,7 @@ export function SettingsView() {
           to bring your Songs back or move them to another device.
         </p>
         <div className="actions">
-          <button type="button" onClick={downloadLibraryFile}>
+          <button type="button" onClick={exportFile}>
             Export Library
           </button>
           <label className="file-button">
@@ -117,7 +119,12 @@ export function SettingsView() {
             <input type="file" name="library-file" accept="application/json,.json" onChange={importFile} />
           </label>
         </div>
-        <p role="status">{imported}</p>
+        <p role="status">{importMessage}</p>
+        {exportFailed && (
+          <p role="alert" className="error">
+            {EXPORT_FAILED}
+          </p>
+        )}
         {importError && (
           <p role="alert" className="error">
             {importError}

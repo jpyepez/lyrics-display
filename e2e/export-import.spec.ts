@@ -81,7 +81,7 @@ test('importing on another device adds the Songs, and importing again adds nothi
   await pasteSong(otherDevice, 'River Road', 'Pebble Choir')
 
   await importLibrary(otherDevice, file)
-  await expect(otherDevice.getByRole('status')).toHaveText('Added 1 Song, skipped 1 already in the Library.')
+  await expect(otherDevice.getByRole('status')).toHaveText('Added 1 Song, skipped 1 duplicate.')
   await expect(await listedTitles(otherDevice)).toHaveText([
     'candle waltz THE STAND-INS',
     'Meadow Song The Placeholders',
@@ -91,7 +91,7 @@ test('importing on another device adds the Songs, and importing again adds nothi
   await expect(otherDevice.getByRole('note')).toHaveText('capo 2, slow intro')
 
   await importLibrary(otherDevice, file)
-  await expect(otherDevice.getByRole('status')).toHaveText('Added 0 Songs, skipped 2 already in the Library.')
+  await expect(otherDevice.getByRole('status')).toHaveText('Added 0 Songs, skipped 2 duplicates.')
   await expect(await listedTitles(otherDevice)).toHaveCount(3)
 })
 
@@ -130,22 +130,22 @@ test('the Library asks for an export now and then', async ({ page }) => {
   expect(download.suggestedFilename()).toBe('lyrics-library-2026-03-01.json')
   await expect(nudge).toHaveCount(0)
 
-  await page.clock.setFixedTime(new Date('2026-03-14T10:00:00'))
+  await page.clock.setFixedTime(new Date('2026-03-07T10:00:00'))
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible()
   await expect(nudge).toHaveCount(0)
 
-  await page.clock.setFixedTime(new Date('2026-03-16T10:00:00'))
+  await page.clock.setFixedTime(new Date('2026-03-09T10:00:00'))
   await page.reload()
   await page.getByRole('button', { name: 'Not now' }).click()
   await expect(nudge).toHaveCount(0)
 
-  await page.clock.setFixedTime(new Date('2026-03-29T10:00:00'))
+  await page.clock.setFixedTime(new Date('2026-03-15T10:00:00'))
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible()
   await expect(nudge).toHaveCount(0)
 
-  await page.clock.setFixedTime(new Date('2026-03-31T10:00:00'))
+  await page.clock.setFixedTime(new Date('2026-03-17T10:00:00'))
   await page.reload()
   await expect(nudge).toBeVisible()
 })

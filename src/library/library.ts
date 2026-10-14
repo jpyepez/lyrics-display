@@ -117,7 +117,7 @@ export async function exportLibrary(): Promise<string> {
   return toLibraryFile(await listSongs())
 }
 
-/** How an import went: Songs added, and Songs skipped as already in the Library. */
+/** How an import went: Songs added, and Songs skipped as duplicates (in the Library or the file). */
 export type ImportResult = { added: number; skipped: number }
 
 /**

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { navigate, routes } from '../app/route'
-import { saveLastBackup, useLastBackup } from '../app/settings'
+import { useLastBackup } from '../app/settings'
 import type { Song } from '../song/song'
-import { downloadLibraryFile, isBackupDue } from './backup'
+import { EXPORT_FAILED, isBackupDue, recordBackup, useExportLibrary } from './backup'
 import { deleteSong, listSongs, matchesFilter, restoreSong } from './library'
 
 /** How long the Undo toast stays after a delete. */
@@ -37,17 +37,11 @@ export function LibraryView() {
   }
 
   const lastBackup = useLastBackup()
-  // Read once when the Library opens; the reminder only needs to be right to the day.
+  // Read once when the Library opens; the nudge only needs to be right to the day.
   const [openedAt] = useState(() => Date.now())
   const backupDue = isBackupDue(songs?.length ?? 0, lastBackup, openedAt)
 
-  function putOffBackup() {
-    try {
-      saveLastBackup(Date.now())
-    } catch {
-      // Storage unavailable: the reminder stays until the user exports.
-    }
-  }
+  const { exportFile, exportFailed } = useExportLibrary()
 
   const shown = songs?.filter((song) => matchesFilter(song, filter))
 
@@ -68,13 +62,18 @@ export function LibraryView() {
           <h2 id="backup-nudge-heading">Backup</h2>
           <p>Your Library is kept only in this browser, which may clear it. Export a copy now and then.</p>
           <div className="actions">
-            <button type="button" onClick={downloadLibraryFile}>
+            <button type="button" onClick={exportFile}>
               Export Library
             </button>
-            <button type="button" onClick={putOffBackup}>
+            <button type="button" onClick={() => recordBackup(Date.now())}>
               Not now
             </button>
           </div>
+          {exportFailed && (
+            <p role="alert" className="error">
+              {EXPORT_FAILED}
+            </p>
+          )}
         </section>
       )}
       {songs?.length === 0 && <p>No Songs yet.</p>}

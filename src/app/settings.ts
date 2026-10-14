@@ -56,7 +56,7 @@ export function savePaperSetting(setting: PaperSetting) {
 }
 
 /**
- * When the user last exported the Library or put off the reminder to, in ms since the epoch.
+ * When the user last exported the Library or put off the nudge to, in ms since the epoch.
  * Kept here, not in the Library, so the export file never carries it.
  */
 const BACKUP_KEY = 'lyrics-display.last-backup'

@@ -190,7 +190,6 @@ main {
 /* A file input dressed as a button: the label is what shows, the input stays focusable. */
 .settings .file-button {
   box-sizing: border-box;
-  min-height: 36px;
   padding: 0 8px;
   border: 1px solid #767676;
   border-radius: 4px;

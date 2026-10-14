@@ -28,6 +28,14 @@ _Avoid_: Comment, annotation
 All the Songs saved on one device.
 _Avoid_: Collection, catalog, songbook
 
+**Library file**:
+The whole Library exported as one JSON file with a format version, to import on another device or after the browser clears its storage.
+_Avoid_: Backup file, dump
+
+**Backup**:
+Exporting a Library file. The Library nudges for one when it has had none for a week.
+_Avoid_: Reminder, sync
+
 ## Display
 
 **Screen**:
