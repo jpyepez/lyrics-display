@@ -1,6 +1,6 @@
 ---
 title: Lyrics Display v1
-status: ready
+status: done
 ---
 
 # Lyrics Display v1
