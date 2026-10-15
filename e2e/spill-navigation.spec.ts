@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { longLyrics } from './lyrics.ts'
+import { longLyrics, verses } from './lyrics.ts'
 
 async function pasteSong(page: Page, lyrics: string) {
   await page.goto('/')
@@ -102,4 +102,20 @@ test('a Song that fits one Screen shows no Screen indicator', async ({ page }) =
 
   await expect(page.getByTestId('lyric-line')).toHaveText('The lantern hums along the river road')
   await expect(screenIndicator(page)).toBeHidden()
+})
+
+test('one long line wraps in an extra column rather than Spilling the Song', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  // Wider than half the Screen at the minimum font, so two columns are never readable.
+  const longLine = 'The lantern hums along the river road and the kettle sings by the window all night long'
+  await pasteSong(page, verses(8).replace('[Verse 1]\n', `[Verse 1]\n${longLine}\n`))
+
+  await expect(page.getByTestId('lyric-line').first()).toHaveText(longLine)
+  await expect(screenIndicator(page)).toBeHidden()
+  await expectAllVisible(page)
+  const lefts = await page
+    .getByRole('article', { name: 'Lyrics' })
+    .getByRole('group')
+    .evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size)
+  expect(lefts).toBe(2)
 })

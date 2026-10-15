@@ -91,11 +91,15 @@ export function SongView({ id }: { id: string }) {
         columnCount: screenFit.columnCount,
         minFontSize: SCREEN_MIN_FONT_SIZE,
         maxFontSize: SCREEN_MAX_FONT_SIZE,
-        maxColumnCount: readableColumnCount(
-          stanzas,
-          { kind: 'screen', ...screen },
-          song?.override?.fontSize ?? SCREEN_MIN_FONT_SIZE,
-          measurer,
+        // As many as are readable, and beyond that up to one per Stanza, long lines wrapping.
+        maxColumnCount: Math.max(
+          stanzas.length,
+          readableColumnCount(
+            stanzas,
+            { kind: 'screen', ...screen },
+            song?.override?.fontSize ?? SCREEN_MIN_FONT_SIZE,
+            measurer,
+          ),
         ),
       },
     [screen, screenFit, stanzas, song?.override?.fontSize, measurer],

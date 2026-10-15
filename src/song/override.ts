@@ -9,7 +9,7 @@ export type OverrideRange = {
   columnCount: number
   minFontSize: number
   maxFontSize: number
-  /** The most columns that stay readable at the smallest font the Override allows. */
+  /** The most columns the Override may ask for, readable or not. */
   maxColumnCount: number
 }
 

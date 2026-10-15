@@ -45,8 +45,10 @@ export const COLUMN_GAP_EM = 2
  * is readable when the widest line of every Stanza fits it unwrapped. A Stanza is never
  * split across columns.
  *
- * A Song that cannot fit one surface at the minimum font Spills: it fills the readable
- * columns there and carries on onto as many more surfaces as it needs. Only then may a
+ * A Song that cannot fit one surface at the minimum font tries one more column than is
+ * readable, its long lines wrapping, since a wrapped line is easier to play from than a
+ * turned Screen. If that does not fit either, it Spills: it fills the readable columns
+ * there and carries on onto as many more surfaces as it needs. Only then may a
  * Stanza taller than a whole column break between lines, only where a column is full. It
  * starts in the room left in the current column unless that would cost an extra break.
  *
@@ -59,8 +61,9 @@ export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer, ...i
   const override = (surface.kind === 'screen' && input.override) || {}
   const sizes = override.fontSize ? [override.fontSize] : fontSizes(maxFontSize, minFontSize)
   for (const fontSize of sizes) {
-    const readable = readableColumnCount(stanzas, surface, fontSize, measurer)
-    for (let columnCount = override.columnCount ?? 1; columnCount <= readable; columnCount++) {
+    // A fixed column count is tried as it is, readable or not; otherwise up to the readable count.
+    const mostColumns = override.columnCount ?? readableColumnCount(stanzas, surface, fontSize, measurer)
+    for (let columnCount = override.columnCount ?? 1; columnCount <= mostColumns; columnCount++) {
       const columnWidth = columnWidthFor(surface, columnCount, fontSize)
       const columns = pack(stanzas, columnCount, surface.height, fontSize, columnWidth, measurer)
       if (columns && override.columnCount) {
@@ -68,12 +71,18 @@ export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer, ...i
         return { fontSize, columnCount, surfaces: [spread] }
       }
       if (columns) return { fontSize, columnCount, surfaces: [columns] }
-      if (override.columnCount) break
     }
   }
   const fontSize = sizes.at(-1)!
-  const columnCount =
-    override.columnCount ?? Math.max(1, readableColumnCount(stanzas, surface, fontSize, measurer))
+  const readable = readableColumnCount(stanzas, surface, fontSize, measurer)
+  if (!override.columnCount) {
+    // Wrapping a few long lines beats turning a Screen or Sheet: one more column, then Spill.
+    const columnCount = readable + 1
+    const columnWidth = columnWidthFor(surface, columnCount, fontSize)
+    const columns = pack(stanzas, columnCount, surface.height, fontSize, columnWidth, measurer)
+    if (columns) return { fontSize, columnCount, surfaces: [columns] }
+  }
+  const columnCount = override.columnCount ?? Math.max(1, readable)
   const columnWidth = columnWidthFor(surface, columnCount, fontSize)
   const columns = pack(stanzas, Infinity, surface.height, fontSize, columnWidth, measurer, true) ?? []
   const surfaces: Stanza[][][] = []

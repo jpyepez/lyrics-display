@@ -106,6 +106,25 @@ describe('fit', () => {
     })
   })
 
+  test('before Spilling, a Song takes one more column than is readable, its long lines wrapping', () => {
+    const wide = { lines: ['w'.repeat(14), ...stanza('w', 3).lines] }
+    const song = [wide, ...Array.from({ length: 6 }, (_, i) => stanza(String.fromCharCode(97 + i), 4))]
+
+    // The 14-character line is 140px at 20px, wider than two 130px columns, so one column
+    // is readable: it holds 6 of the 7 Stanzas (6 × 80 + 5 × 20 = 580px of 600px). In two
+    // columns that line wraps onto 2 rows (100px); the first holds the wide Stanza and 5
+    // more (100 + 5 × 100 = 600px), the second the last one.
+    const result = fit({
+      stanzas: song,
+      surface: { kind: 'screen', width: 300, height: 600 },
+      minFontSize: 20,
+      maxFontSize: 40,
+      measurer: fakeMeasurer,
+    })
+
+    expect(result).toEqual({ fontSize: 20, columnCount: 2, surfaces: [[song.slice(0, 6), song.slice(6)]] })
+  })
+
   test('a Stanza taller than a whole column at the minimum font breaks between lines, only where a column is full', () => {
     const [a, c] = [stanza('a', 2), stanza('c', 2)]
     const b = { sectionLabel: 'Bridge', lines: stanza('b', 15).lines }
@@ -274,6 +293,24 @@ describe('fit', () => {
       })
 
       expect(result).toEqual({ fontSize: 40, columnCount: 2, surfaces: [[[a, b], [c]]] })
+    })
+
+    test('a column count Override above the readable count is used at the largest font that fits, lines wrapping', () => {
+      const [a, b, c] = [stanza('a', 2), stanza('b', 2), stanza('c', 2)]
+
+      // Only one column is readable at any size here. Three columns at 40px are
+      // (300 − 160) / 3 = 46.7px wide, so each 200px line wraps onto 5 rows: a Stanza is
+      // 10em = 400px, one per column within 600px.
+      const result = fit({
+        stanzas: [a, b, c],
+        surface: { kind: 'screen', width: 300, height: 600 },
+        minFontSize: 20,
+        maxFontSize: 40,
+        measurer: fakeMeasurer,
+        override: { columnCount: 3 },
+      })
+
+      expect(result).toEqual({ fontSize: 40, columnCount: 3, surfaces: [[[a], [b], [c]]] })
     })
 
     test('a column count Override too few for one Screen Spills at the minimum font', () => {
