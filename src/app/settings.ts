@@ -55,6 +55,34 @@ export function savePaperSetting(setting: PaperSetting) {
   for (const listener of listeners) listener()
 }
 
+/** Light or dark as the system has it, or the one the user picked on this device. */
+export type Theme = 'system' | 'light' | 'dark'
+
+// index.html reads this key too, before the first paint.
+const THEME_KEY = 'lyrics-display.theme'
+
+const THEMES: readonly string[] = ['system', 'light', 'dark'] satisfies Theme[]
+
+function readTheme(): string | null {
+  try {
+    return localStorage.getItem(THEME_KEY)
+  } catch {
+    return null
+  }
+}
+
+/** The theme the user picked; the system's until they pick one. */
+export function useThemeSetting(): Theme {
+  const stored = useSyncExternalStore(subscribe, readTheme)
+  return stored !== null && THEMES.includes(stored) ? (stored as Theme) : 'system'
+}
+
+/** Stores the theme on this device. Throws when storage is unavailable. */
+export function saveThemeSetting(theme: Theme) {
+  localStorage.setItem(THEME_KEY, theme)
+  for (const listener of listeners) listener()
+}
+
 /**
  * When the user last exported the Library or put off the nudge to, in ms since the epoch.
  * Kept here, not in the Library, so the export file never carries it.

@@ -4,7 +4,7 @@ import { importLibrary, type ImportResult } from '../library/library'
 import { LibraryFileError } from '../library/libraryFile'
 import type { Orientation, PaperSetting, PaperSize } from '../song/sheet'
 import { routes } from './route'
-import { savePaperSetting, usePaperSetting } from './settings'
+import { savePaperSetting, saveThemeSetting, usePaperSetting, useThemeSetting, type Theme } from './settings'
 
 const PAPER_SIZE_OPTIONS: { value: PaperSize; label: string }[] = [
   { value: 'a4', label: 'A4' },
@@ -14,6 +14,12 @@ const PAPER_SIZE_OPTIONS: { value: PaperSize; label: string }[] = [
 const ORIENTATION_OPTIONS: { value: Orientation; label: string }[] = [
   { value: 'portrait', label: 'Portrait' },
   { value: 'landscape', label: 'Landscape' },
+]
+
+const THEME_OPTIONS: { value: Theme; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
 ]
 
 /**
@@ -32,20 +38,24 @@ function describeImport({ added, skipped }: ImportResult): string {
 
 export function SettingsView() {
   const paper = usePaperSetting()
+  const theme = useThemeSetting()
   const [saveFailed, setSaveFailed] = useState(false)
   const [importMessage, setImportMessage] = useState<string>()
   const { exportFile, exportFailed } = useExportLibrary()
   const [importError, setImportError] = useState<string>()
 
   /** Saves a change as soon as it is picked; there is no Save button. */
-  function choosePaper(setting: PaperSetting) {
+  function saveSetting(save: () => void) {
     try {
-      savePaperSetting(setting)
+      save()
       setSaveFailed(false)
     } catch {
       setSaveFailed(true)
     }
   }
+
+  const choosePaper = (setting: PaperSetting) => saveSetting(() => savePaperSetting(setting))
+  const chooseTheme = (setting: Theme) => saveSetting(() => saveThemeSetting(setting))
 
   async function importFile(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget
@@ -68,6 +78,21 @@ export function SettingsView() {
     <main className="settings">
       <a href={routes.library}>Library</a>
       <h1>Settings</h1>
+      <fieldset>
+        <legend>Theme</legend>
+        {THEME_OPTIONS.map(({ value, label }) => (
+          <label key={value}>
+            <input
+              type="radio"
+              name="theme"
+              value={value}
+              checked={theme === value}
+              onChange={() => chooseTheme(value)}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <fieldset>
         <legend>Paper size</legend>
         {PAPER_SIZE_OPTIONS.map(({ value, label }) => (
