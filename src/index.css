@@ -149,6 +149,13 @@ main {
   justify-content: flex-end;
 }
 
+/* Save on the paste and edit forms, Search on the search form. */
+.song-form .actions button {
+  min-height: 36px;
+  padding: 0 16px;
+  font: inherit;
+}
+
 /* Search results: each one is a full-width row to pick. */
 .search .results {
   list-style: none;

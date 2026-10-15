@@ -79,20 +79,24 @@ export function SongView({ id, alreadySaved = false }: { id: string; alreadySave
   const [song, setSong] = useState<Song | null>()
   // Read once: the URL loses the flag below, and the note should not go with it.
   const [announceAlreadySaved] = useState(alreadySaved)
-  const [alreadySavedDone, setAlreadySavedDone] = useState(false)
+  const [showAlreadySaved, setShowAlreadySaved] = useState(false)
 
-  const songShown = Boolean(song)
-  const showAlreadySaved = announceAlreadySaved && songShown && !alreadySavedDone
   useEffect(() => {
     if (!announceAlreadySaved) return
     // Say it once: a reload of this Song should not say it again.
     history.replaceState(null, '', routes.song(id))
   }, [announceAlreadySaved, id])
+  const songShown = Boolean(song)
   useEffect(() => {
-    if (!showAlreadySaved) return
-    const timer = setTimeout(() => setAlreadySavedDone(true), ALREADY_SAVED_MS)
-    return () => clearTimeout(timer)
-  }, [showAlreadySaved])
+    if (!announceAlreadySaved || !songShown) return
+    // A tick after the Song (and its empty live region) is on screen, so the note is announced.
+    const show = setTimeout(() => setShowAlreadySaved(true))
+    const hide = setTimeout(() => setShowAlreadySaved(false), ALREADY_SAVED_MS)
+    return () => {
+      clearTimeout(show)
+      clearTimeout(hide)
+    }
+  }, [announceAlreadySaved, songShown])
   const [screenRef, screen] = useElementSize()
   const measurer = useMemo(() => createDomMeasurer(), [])
   useEffect(() => measurer.dispose, [measurer])

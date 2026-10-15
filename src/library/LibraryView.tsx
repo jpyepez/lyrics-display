@@ -81,6 +81,7 @@ export function LibraryView() {
         <>
           <input
             type="search"
+            name="filter"
             className="filter"
             aria-label="Filter"
             placeholder="Filter by title or artist"
