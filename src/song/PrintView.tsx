@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
 import { usePaperSetting } from '../app/settings'
-import { COLUMN_GAP_EM, fit, STANZA_GAP_EM, type TextMeasurer } from './fit'
+import { COLUMN_GAP_EM, fit, STANZA_GAP_EM, surfaceColumns, type TextMeasurer } from './fit'
 import type { Stanza } from './lyrics'
 import { measureSheetHeader } from './measure'
 import {
@@ -57,7 +57,7 @@ export function PrintView({ song, stanzas, measurer }: PrintViewProps) {
     <div className="print">
       {/* Zero page margin leaves the browser no room for its date, URL and page numbers. */}
       <style>{`@page { size: ${paper.width}mm ${paper.height}mm; margin: 0; }`}</style>
-      {sheetFit.surfaces.map((columns, i) => (
+      {sheetFit.surfaces.map((_, i) => (
         <section key={i} aria-label={`Sheet ${i + 1} of ${sheetCount}`} className="sheet" style={sheetStyle}>
           <header style={{ height: headerHeight }}>
             <h1>{song.title}</h1>
@@ -69,7 +69,7 @@ export function PrintView({ song, stanzas, measurer }: PrintViewProps) {
             )}
           </header>
           <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
-            {columns.map((column, j) => (
+            {surfaceColumns(sheetFit, i).map((column, j) => (
               <div key={j} className="column" style={columnStyle}>
                 {column.map((stanza, k) => (
                   <div role="group" key={k} className="stanza">

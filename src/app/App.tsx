@@ -41,7 +41,7 @@ export function App() {
     case 'settings':
       return <SettingsView />
     case 'song':
-      return <SongView key={route.id} id={route.id} />
+      return <SongView key={route.id} id={route.id} alreadySaved={route.alreadySaved} />
     case 'edit-song':
       return <EditSongForm key={route.id} id={route.id} />
   }

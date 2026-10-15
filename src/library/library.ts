@@ -71,10 +71,10 @@ function songKey({ title, artist }: Pick<Song, 'title' | 'artist'>): string {
 
 /**
  * Adds a Song, unless one with the same title and artist (trimmed, ignoring case) is already
- * in the Library: then that Song comes back unchanged. The check and the add share one
- * transaction, so two quick adds of the same Song cannot both get in.
+ * in the Library: then that Song comes back unchanged, with `added` false. The check and the
+ * add share one transaction, so two quick adds of the same Song cannot both get in.
  */
-export async function addSong(input: NewSong): Promise<Song> {
+export async function addSong(input: NewSong): Promise<{ song: Song; added: boolean }> {
   const transaction = (await openDb()).transaction(SONGS, 'readwrite')
   const songs = transaction.objectStore(SONGS)
   const committed = commit(transaction)
@@ -82,12 +82,12 @@ export async function addSong(input: NewSong): Promise<Song> {
   const existing = (await settle(songs.getAll() as IDBRequest<Song[]>)).find((song) => songKey(song) === key)
   if (existing) {
     await committed
-    return existing
+    return { song: existing, added: false }
   }
   const now = Date.now()
   const song: Song = { id: crypto.randomUUID(), ...input, createdAt: now, updatedAt: now }
   await Promise.all([settle(songs.add(song)), committed])
-  return song
+  return { song, added: true }
 }
 
 /** The Song with this title and artist under the duplicate rule, if the Library has one. */

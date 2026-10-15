@@ -5,8 +5,8 @@ import { SongForm, type SongFields } from './SongForm'
 /** `title` and `artist` start the fields filled in, as when search sends the user here. */
 export function PasteSongForm({ title = '', artist = '' }: { title?: string; artist?: string }) {
   async function save(song: SongFields) {
-    const saved = await addSong(song)
-    navigate(routes.song(saved.id))
+    const { song: saved, added } = await addSong(song)
+    navigate(added ? routes.song(saved.id) : routes.songAlreadySaved(saved.id))
   }
 
   return (

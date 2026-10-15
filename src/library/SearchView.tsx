@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { navigate, routes } from '../app/route'
 import { addSong, findSong } from './library'
-import { searchLyrics, type SearchOutcome, type SearchResult } from './search'
+import { resultDetail, searchLyrics, type SearchOutcome, type SearchResult } from './search'
 
 export function SearchView() {
   const [searching, setSearching] = useState(false)
@@ -33,8 +33,8 @@ export function SearchView() {
   async function pick(result: SearchResult, lyrics: string) {
     setSaveError(undefined)
     try {
-      const song = await addSong({ title: result.title.trim(), artist: result.artist.trim(), lyrics })
-      navigate(routes.song(song.id))
+      const { song, added } = await addSong({ title: result.title.trim(), artist: result.artist.trim(), lyrics })
+      navigate(added ? routes.song(song.id) : routes.songAlreadySaved(song.id))
     } catch {
       setSaveError('Could not save the Song. Try again.')
     }
@@ -45,7 +45,7 @@ export function SearchView() {
     const title = result.title.trim()
     const artist = result.artist.trim()
     const existing = await findSong(title, artist).catch(() => undefined)
-    navigate(existing ? routes.song(existing.id) : routes.pasteFor(title, artist))
+    navigate(existing ? routes.songAlreadySaved(existing.id) : routes.pasteFor(title, artist))
   }
 
   return (
@@ -69,19 +69,22 @@ export function SearchView() {
       </form>
       {outcome?.kind === 'results' && (
         <ul className="results">
-          {outcome.results.map(({ lyrics, ...result }) => (
-            <li key={result.id}>
-              {lyrics !== undefined ? (
-                <button type="button" onClick={() => pick(result, lyrics)}>
-                  <ResultText result={result} />
-                </button>
-              ) : (
-                <button type="button" onClick={() => pickWithoutLyrics(result)}>
-                  <ResultText result={result} /> <span className="instrumental">Instrumental</span>
-                </button>
-              )}
-            </li>
-          ))}
+          {outcome.results.map((result) => {
+            const { lyrics } = result
+            return (
+              <li key={result.id}>
+                {lyrics !== undefined ? (
+                  <button type="button" onClick={() => pick(result, lyrics)}>
+                    <ResultText result={result} />
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => pickWithoutLyrics(result)}>
+                    <ResultText result={result} /> <span className="instrumental">Instrumental</span>
+                  </button>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
       {saveError && (
@@ -112,10 +115,12 @@ function seconds(count: number): string {
 }
 
 function ResultText({ result }: { result: SearchResult }) {
+  const detail = resultDetail(result)
   return (
     <>
       <span className="title">{result.title}</span> <span className="artist">{result.artist}</span>{' '}
       <span className="album">{result.album}</span>
+      {detail && <span className="detail">{detail}</span>}
     </>
   )
 }

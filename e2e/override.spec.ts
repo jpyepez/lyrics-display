@@ -68,19 +68,19 @@ test('a column count Override that Spills is kept after a reload until reset to 
   await expect.poll(() => screenCount(page)).toBe(auto)
 })
 
-/** How many columns the Screen shows, from where its Stanzas start. */
+/** How many columns the Screen fills, from where its Stanzas start; read in one go, so a refit cannot land midway. */
 async function columnCount(page: Page): Promise<number> {
-  const lefts = new Set<number>()
-  const stanzas = page.getByRole('main').getByRole('group').filter({ has: page.getByTestId('lyric-line') })
-  for (const stanza of await stanzas.all()) lefts.add(Math.round((await stanza.boundingBox())!.x))
-  return lefts.size
+  return page
+    .getByRole('article', { name: 'Lyrics' })
+    .getByRole('group')
+    .evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size)
 }
 
 test('more columns can be asked for even where a long line then wraps', async ({ page }) => {
   const longLine = 'The lantern hums along the river road and the kettle sings by the window all night long'
   const stanzas = [`[Verse 1]\n${longLine}\nThe kettle sings`, '[Verse 2]\nThe meadow folds', '[Verse 3]\nThe harbor waits']
   await pasteSong(page, stanzas.join('\n\n'))
-  expect(await columnCount(page)).toBe(1)
+  await expect.poll(() => columnCount(page)).toBe(1)
 
   await expect(page.getByRole('button', { name: 'More columns' })).toBeEnabled()
   await page.getByRole('button', { name: 'More columns' }).click()

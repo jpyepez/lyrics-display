@@ -8,6 +8,8 @@ export type SearchResult = {
   title: string
   artist: string
   album: string
+  /** Length of the recording in seconds, when LRCLIB knows it. */
+  duration?: number
   lyrics?: string
 }
 
@@ -25,6 +27,7 @@ type LrclibTrack = {
   trackName: string
   artistName: string
   albumName: string
+  duration: number | null
   instrumental: boolean
   plainLyrics: string | null
 }
@@ -36,8 +39,27 @@ function toResult(track: LrclibTrack): SearchResult {
     title: track.trackName,
     artist: track.artistName,
     album: track.albumName,
+    ...(track.duration && { duration: track.duration }),
     ...(lyrics && { lyrics }),
   }
+}
+
+/**
+ * What tells one match from another with the same title and artist: its length, how many
+ * lines of Lyrics it has and its first line, as "3:20 · 3 lines · The harbor hums at night".
+ */
+export function resultDetail({ duration, lyrics }: SearchResult): string {
+  const parts: string[] = []
+  if (duration) {
+    const seconds = Math.round(duration)
+    parts.push(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`)
+  }
+  const lines = (lyrics ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  if (lines.length > 0) parts.push(lines.length === 1 ? '1 line' : `${lines.length} lines`, lines[0])
+  return parts.join(' · ')
 }
 
 /** `retry-after` in whole seconds; it is either a number of seconds or an HTTP date. */

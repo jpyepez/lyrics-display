@@ -119,3 +119,41 @@ test('one long line wraps in an extra column rather than Spilling the Song', asy
     .evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().left))).size)
   expect(lefts).toBe(2)
 })
+
+/** The width of the Stanzas on the current Screen, which is the width of their column. */
+async function stanzaWidths(page: Page) {
+  return page
+    .getByRole('article', { name: 'Lyrics' })
+    .getByRole('group')
+    .evaluateAll((els) => [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().width)))])
+}
+
+test('the last Screen keeps the same columns as the others, even when it fills fewer', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await pasteSong(page, longLyrics)
+  await expect(screenIndicator(page)).toHaveText(/^1\/\d+$/)
+  const count = Number((await screenIndicator(page).innerText()).split('/')[1])
+  const [width] = await stanzaWidths(page)
+
+  for (let i = 1; i < count; i++) await page.keyboard.press('ArrowRight')
+  await expect(screenIndicator(page)).toHaveText(`${count}/${count}`)
+  expect(await stanzaWidths(page)).toEqual([width])
+})
+
+test('changing the layout keeps the Stanza that was at the top of the Screen in view', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await pasteSong(page, longLyrics)
+  await expect(screenIndicator(page)).toHaveText(/^1\//)
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await expect(screenIndicator(page)).toHaveText(/^3\//)
+  // Three columns of four Stanzas a Screen: the third Screen starts at Verse 25.
+  expect((await shownLabels(page))[0]).toBe('Verse 25')
+
+  const before = await screenIndicator(page).innerText()
+
+  // Two columns hold fewer Stanzas a Screen, so the third Screen alone would now show earlier ones.
+  await page.getByRole('button', { name: 'Fewer columns' }).click()
+  await expect(screenIndicator(page)).not.toHaveText(before)
+  expect(await shownLabels(page)).toContain('Verse 25')
+})

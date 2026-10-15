@@ -85,3 +85,21 @@ test('pasting a Song already in the Library opens the existing Song instead of a
   await page.goto('/')
   await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(1)
 })
+
+test('pasting a Song already in the Library says so, once', async ({ page }) => {
+  for (const lyrics of ['The first lantern burns', 'A second lantern copy']) {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Paste a Song' }).click()
+    await page.getByLabel('Title').fill('Lantern Song')
+    await page.getByLabel('Artist').fill('The Placeholders')
+    await page.getByLabel('Lyrics').fill(lyrics)
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Lantern Song' })).toBeVisible()
+    if (lyrics === 'The first lantern burns') await expect(page.getByText(/Already in your Library/)).toHaveCount(0)
+  }
+
+  await expect(page.getByText('Already in your Library. Showing your saved copy.')).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1, name: 'Lantern Song' })).toBeVisible()
+  await expect(page.getByText(/Already in your Library/)).toHaveCount(0)
+})

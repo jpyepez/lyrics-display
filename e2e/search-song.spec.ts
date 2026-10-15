@@ -29,6 +29,23 @@ function results(page: Page) {
   return page.getByRole('main').getByRole('listitem')
 }
 
+test('each match shows its length, how many lines it has and how it starts, to tell versions apart', async ({ page }) => {
+  await stubSearch(
+    page,
+    respondWith([
+      result('Harbor Lights', 'The Placeholders', 'Low Tide', 'The harbor hums at night\nThe candle by the window\n\nThe meadow sleeps'),
+      { ...result('Harbor Lights', 'The Placeholders', 'Live at the Mill', '  Hey hey the lamp is low\nHey hey'), duration: 245.6 },
+    ]),
+  )
+
+  await search(page, 'Harbor Lights', 'Placeholders')
+
+  await expect(results(page)).toHaveText([
+    /3:20 · 3 lines · The harbor hums at night/,
+    /4:06 · 2 lines · Hey hey the lamp is low/,
+  ])
+})
+
 test('search lists matches with title, artist and album, and picking one saves and opens it', async ({ page }) => {
   const queries: URLSearchParams[] = []
   await stubSearch(page, async (route) => {
@@ -195,4 +212,29 @@ test('a rate limit given as a date waits until that time', async ({ page }) => {
   await search(page, 'Kettle Waltz', '')
 
   await expect(page.getByRole('alert')).toHaveText('LRCLIB is busy. Try again in 45 seconds, or Paste the Lyrics')
+})
+
+test('picking a result already in the Library says so, with Lyrics or without', async ({ page }) => {
+  await stubSearch(
+    page,
+    respondWith([
+      result('Harbor Lights', 'The Placeholders', 'Low Tide', 'A fetched harbor line'),
+      result('Harbor Lights', 'The Placeholders', 'Quiet Hours', null),
+    ]),
+  )
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Paste a Song' }).click()
+  await page.getByLabel('Title').fill('Harbor Lights')
+  await page.getByLabel('Artist').fill('The Placeholders')
+  await page.getByLabel('Lyrics').fill('My own harbor line')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Harbor Lights' })).toBeVisible()
+  await expect(page.getByText(/Already in your Library/)).toHaveCount(0)
+
+  for (const pick of [0, 1]) {
+    await search(page, 'Harbor Lights', '')
+    await results(page).nth(pick).getByRole('button').click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Harbor Lights' })).toBeVisible()
+    await expect(page.getByText('Already in your Library. Showing your saved copy.')).toBeVisible()
+  }
 })

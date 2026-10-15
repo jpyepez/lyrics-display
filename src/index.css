@@ -48,8 +48,15 @@ main {
 
 .library .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 12px 16px;
+}
+
+.library .actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
 }
 
 .library ul {
@@ -102,6 +109,11 @@ main {
   background: var(--text);
   color: var(--background);
   pointer-events: auto;
+}
+
+.toast.notice {
+  margin: 0;
+  padding: 8px 16px;
 }
 
 .toast button {
@@ -169,6 +181,18 @@ main {
 .search .results .instrumental {
   color: var(--muted);
   font-style: italic;
+}
+
+/* Length, line count and first line, on a row of their own, cut short rather than wrapping. */
+.search .results .detail {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .search .error {
@@ -316,11 +340,24 @@ main.song {
   font-variant-numeric: tabular-nums;
 }
 
-/* Override controls sit at the end of the header, outside the Screen's tap zones. */
+/*
+ * Edit, Print and the Override controls sit at the end of the header, outside the Screen's
+ * tap zones. They wrap as one block onto a row of their own when the header is narrow, and
+ * inside it only between groups, so no control is left alone on a line.
+ */
+.song header .tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+/* Override controls. */
 .song header .override {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   font-size: 0.875rem;
   color: var(--muted);
 }
@@ -329,6 +366,7 @@ main.song {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
 }
 
 .song header .print-button {
@@ -337,10 +375,23 @@ main.song {
   min-height: 36px;
 }
 
-.song header .override button {
+.song header .override button,
+.song header .reset-override {
+  white-space: nowrap;
   font: inherit;
   min-width: 36px;
   min-height: 36px;
+}
+
+.song header .reset-override {
+  font-size: 0.875rem;
+}
+
+/* Too narrow for one row of tools: Edit, Print and Reset, then the steppers below. */
+@media (max-width: 640px) {
+  .song header .override {
+    order: 1;
+  }
 }
 
 /* The Fit keeps every Screen inside this box; a Song that needs more Spills to the next Screen. */

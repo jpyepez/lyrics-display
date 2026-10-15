@@ -92,6 +92,15 @@ export function fit({ stanzas, surface, minFontSize, maxFontSize, measurer, ...i
   return { fontSize, columnCount, surfaces }
 }
 
+/**
+ * A surface's columns, with empty ones added up to the Fit's column count, so a surface
+ * that fills fewer columns (the last one, often) keeps the same column widths as the rest.
+ */
+export function surfaceColumns(fit: Fit, index: number): Stanza[][] {
+  const columns = fit.surfaces[index] ?? []
+  return Array.from({ length: Math.max(fit.columnCount, columns.length) }, (_, i) => columns[i] ?? [])
+}
+
 /** How many columns a surface holds at a font size with every Stanza's widest line unwrapped; 0 when not even one. */
 export function readableColumnCount(
   stanzas: Stanza[],

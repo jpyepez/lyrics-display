@@ -5,7 +5,8 @@ export type Route =
   | { name: 'paste'; title?: string; artist?: string }
   | { name: 'search' }
   | { name: 'settings' }
-  | { name: 'song'; id: string }
+  /** `alreadySaved` when an add found the Song already in the Library. */
+  | { name: 'song'; id: string; alreadySaved?: boolean }
   | { name: 'edit-song'; id: string }
 
 /** A URL hash for one of the app's routes. Only `routes` makes these. */
@@ -19,6 +20,8 @@ export const routes = {
   search: '#/search' as RouteHash,
   settings: '#/settings' as RouteHash,
   song: (id: string) => `#/song/${encodeURIComponent(id)}` as RouteHash,
+  /** The Song an add found already in the Library, to say so once. */
+  songAlreadySaved: (id: string) => `#/song/${encodeURIComponent(id)}?already-saved` as RouteHash,
   editSong: (id: string) => `#/song/${encodeURIComponent(id)}/edit` as RouteHash,
 }
 
@@ -33,6 +36,8 @@ function parseHash(hash: string): Route {
   if (hash === routes.settings) return { name: 'settings' }
   const edit = /^#\/song\/([^/]+)\/edit$/.exec(hash)
   if (edit) return { name: 'edit-song', id: decodeURIComponent(edit[1]) }
+  const alreadySaved = /^#\/song\/([^/?]+)\?already-saved$/.exec(hash)
+  if (alreadySaved) return { name: 'song', id: decodeURIComponent(alreadySaved[1]), alreadySaved: true }
   const song = /^#\/song\/(.+)$/.exec(hash)
   if (song) return { name: 'song', id: decodeURIComponent(song[1]) }
   return { name: 'library' }

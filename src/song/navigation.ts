@@ -1,3 +1,5 @@
+import type { Stanza } from './lyrics'
+
 /** Keys that turn the Screen; a Bluetooth page-turner pedal sends one of these. */
 const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown', 'PageDown', ' '])
 const PREVIOUS_KEYS = new Set(['ArrowLeft', 'ArrowUp', 'PageUp'])
@@ -17,7 +19,23 @@ export function tapStep(x: number, screen: { left: number; width: number }): num
   return x >= screen.left + screen.width / 2 ? 1 : -1
 }
 
-/** Keeps a Screen index within `count` Screens. */
-export function clampScreenIndex(index: number, count: number): number {
-  return Math.min(Math.max(0, index), Math.max(0, count - 1))
+/**
+ * Where each surface starts, as the index of its first lyric line in the whole Song. A
+ * Stanza split between columns counts its lines where each part is shown.
+ */
+export function surfaceStarts(surfaces: Stanza[][][]): number[] {
+  const starts: number[] = []
+  let line = 0
+  for (const columns of surfaces) {
+    starts.push(line)
+    for (const column of columns) for (const stanza of column) line += stanza.lines.length
+  }
+  return starts
+}
+
+/** The surface that shows lyric line `line`, given where each surface starts; 0 when there are none. */
+export function surfaceShowing(starts: number[], line: number): number {
+  let index = 0
+  while (index + 1 < starts.length && starts[index + 1] <= line) index++
+  return index
 }

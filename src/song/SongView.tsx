@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
 import { routes } from '../app/route'
 import { getSong, updateSong } from '../library/library'
-import { COLUMN_GAP_EM, fit, readableColumnCount, STANZA_GAP_EM } from './fit'
-import { parseLyrics } from './lyrics'
-import { clampScreenIndex, keyStep, tapStep } from './navigation'
+import { COLUMN_GAP_EM, fit, readableColumnCount, STANZA_GAP_EM, surfaceColumns } from './fit'
+import { parseLyrics, type Stanza } from './lyrics'
+import { keyStep, surfaceShowing, surfaceStarts, tapStep } from './navigation'
 import { createDomMeasurer } from './measure'
 import { PrintView } from './PrintView'
 import { stepOverride, type OverrideRange, type OverrideStep } from './override'
@@ -16,6 +16,12 @@ import { useWakeLock } from './wakeLock'
  */
 const SCREEN_MIN_FONT_SIZE = 20
 const SCREEN_MAX_FONT_SIZE = 72
+
+/** How long the note that an add found the Song already saved stays. */
+const ALREADY_SAVED_MS = 5000
+
+/** No Fit yet: kept as one array so the Screen index does not recompute on every render. */
+const NO_SURFACES: Stanza[][][] = []
 
 type Size = { width: number; height: number }
 
@@ -37,12 +43,21 @@ function useElementSize(): [(element: HTMLElement | null) => void, Size | undefi
   return [setElement, size]
 }
 
-/** Moves between `count` Screens by key; the index stays within them when `count` changes. */
-function useScreenIndex(count: number): [number, (step: number) => void] {
-  const [wanted, setWanted] = useState(0)
+/**
+ * Moves between Screens by key. It remembers the first line of the Screen turned to, so
+ * when the Song is laid out again (a resize, an Override) the Screen showing that line
+ * stays in view rather than whichever Screen now has the same number.
+ */
+function useScreenIndex(surfaces: Stanza[][][]): [number, (step: number) => void] {
+  const [anchor, setAnchor] = useState(0)
+  const starts = useMemo(() => surfaceStarts(surfaces), [surfaces])
   const turn = useCallback(
-    (step: number) => setWanted((old) => clampScreenIndex(clampScreenIndex(old, count) + step, count)),
-    [count],
+    (step: number) =>
+      setAnchor((old) => {
+        const index = Math.min(Math.max(0, surfaceShowing(starts, old) + step), starts.length - 1)
+        return starts[index] ?? old
+      }),
+    [starts],
   )
 
   useEffect(() => {
@@ -56,11 +71,28 @@ function useScreenIndex(count: number): [number, (step: number) => void] {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [turn])
 
-  return [clampScreenIndex(wanted, count), turn]
+  return [surfaceShowing(starts, anchor), turn]
 }
 
-export function SongView({ id }: { id: string }) {
+/** `alreadySaved` when the user just tried to add this Song again: they are told so once. */
+export function SongView({ id, alreadySaved = false }: { id: string; alreadySaved?: boolean }) {
   const [song, setSong] = useState<Song | null>()
+  // Read once: the URL loses the flag below, and the note should not go with it.
+  const [announceAlreadySaved] = useState(alreadySaved)
+  const [alreadySavedDone, setAlreadySavedDone] = useState(false)
+
+  const songShown = Boolean(song)
+  const showAlreadySaved = announceAlreadySaved && songShown && !alreadySavedDone
+  useEffect(() => {
+    if (!announceAlreadySaved) return
+    // Say it once: a reload of this Song should not say it again.
+    history.replaceState(null, '', routes.song(id))
+  }, [announceAlreadySaved, id])
+  useEffect(() => {
+    if (!showAlreadySaved) return
+    const timer = setTimeout(() => setAlreadySavedDone(true), ALREADY_SAVED_MS)
+    return () => clearTimeout(timer)
+  }, [showAlreadySaved])
   const [screenRef, screen] = useElementSize()
   const measurer = useMemo(() => createDomMeasurer(), [])
   useEffect(() => measurer.dispose, [measurer])
@@ -107,7 +139,7 @@ export function SongView({ id }: { id: string }) {
   const [saving, setSaving] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
   const screenCount = screenFit?.surfaces.length ?? 0
-  const [screenIndex, turn] = useScreenIndex(screenCount)
+  const [screenIndex, turn] = useScreenIndex(screenFit?.surfaces ?? NO_SURFACES)
   // Only while a Song is shown, not while loading or for a Song missing from the Library.
   useWakeLock(Boolean(song))
 
@@ -156,7 +188,7 @@ export function SongView({ id }: { id: string }) {
           <a href={routes.library}>Library</a>
           <h1>{song.title}</h1>
           <p className="artist">{song.artist}</p>
-          {/* One line at most, cut off with an ellipsis, so the Note never takes room from the Lyrics. */}
+          {/* Two lines at most, cut off with an ellipsis, so the Note never takes much room from the Lyrics. */}
           {song.note && (
             <p role="note" className="note" title={song.note}>
               {song.note}
@@ -166,15 +198,22 @@ export function SongView({ id }: { id: string }) {
           <p role="status" className="screen-indicator" style={screenCount < 2 ? { visibility: 'hidden' } : undefined}>
             {screenIndex + 1}/{screenCount}
           </p>
-          <a href={routes.editSong(song.id)} className="edit-link">
-            Edit
-          </a>
-          <button type="button" className="print-button" onClick={onPrintClick}>
-            Print
-          </button>
-          {overrideRange && (
-            <OverrideControls override={song.override} range={overrideRange} saving={saving} onChange={saveOverride} />
-          )}
+          <div className="tools">
+            <a href={routes.editSong(song.id)} className="edit-link">
+              Edit
+            </a>
+            <button type="button" className="print-button" onClick={onPrintClick}>
+              Print
+            </button>
+            {overrideRange && (
+              <OverrideControls
+                override={song.override}
+                range={overrideRange}
+                saving={saving}
+                onChange={saveOverride}
+              />
+            )}
+          </div>
           {saveFailed && (
             <p role="alert" className="error">
               Could not save the change. Try again.
@@ -183,7 +222,7 @@ export function SongView({ id }: { id: string }) {
         </header>
         <div className="screen" ref={screenRef} onClick={onScreenClick}>
           <article aria-label="Lyrics" className="lyrics" style={lyricsStyle}>
-            {screenFit?.surfaces[screenIndex]?.map((column, i) => (
+            {screenFit && surfaceColumns(screenFit, screenIndex).map((column, i) => (
               <div key={i} className="column" style={columnStyle}>
                 {column.map((stanza, j) => (
                   <div role="group" key={j} className="stanza">
@@ -198,6 +237,10 @@ export function SongView({ id }: { id: string }) {
               </div>
             ))}
           </article>
+        </div>
+        {/* Mounted before it has text, so screen readers announce it. */}
+        <div aria-live="polite" className="toast-region">
+          {showAlreadySaved && <p className="toast notice">Already in your Library. Showing your saved copy.</p>}
         </div>
       </main>
       <PrintView song={song} stanzas={stanzas} measurer={measurer} />
@@ -240,30 +283,39 @@ function OverrideControls({ override, range, saving, onChange }: OverrideControl
   }
 
   return (
-    <div role="group" aria-label="Override" className="override">
-      {STEP_GROUPS.map(({ name, buttons }) => (
-        <span key={name} className="override-step">
-          <span aria-hidden="true">{name}</span>
-          {buttons.map(({ step, label, text }) => {
-            const next = stepOverride(override, step, range)
-            return (
-              <button
-                key={step}
-                type="button"
-                aria-label={label}
-                disabled={!next}
-                aria-disabled={saving || undefined}
-                onClick={(event) => next && change(event, next)}
-              >
-                {text}
-              </button>
-            )
-          })}
-        </span>
-      ))}
-      <button type="button" disabled={!override} aria-disabled={saving || undefined} onClick={(event) => change(event)}>
+    <>
+      <div role="group" aria-label="Override" className="override">
+        {STEP_GROUPS.map(({ name, buttons }) => (
+          <span key={name} className="override-step">
+            <span aria-hidden="true">{name}</span>
+            {buttons.map(({ step, label, text }) => {
+              const next = stepOverride(override, step, range)
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  aria-label={label}
+                  disabled={!next}
+                  aria-disabled={saving || undefined}
+                  onClick={(event) => next && change(event, next)}
+                >
+                  {text}
+                </button>
+              )
+            })}
+          </span>
+        ))}
+      </div>
+      {/* Outside the group so a narrow header can put it beside Edit and Print. */}
+      <button
+        type="button"
+        className="reset-override"
+        disabled={!override}
+        aria-disabled={saving || undefined}
+        onClick={(event) => change(event)}
+      >
         Reset to auto
       </button>
-    </div>
+    </>
   )
 }
