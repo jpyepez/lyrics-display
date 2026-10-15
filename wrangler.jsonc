@@ -1,0 +1,6 @@
+// Cloudflare hosting: the built app is served as static files. Deploy with `bun run deploy`.
+{
+  "name": "lyrics-display",
+  "compatibility_date": "2026-10-12",
+  "assets": { "directory": "./dist" }
+}
