@@ -46,7 +46,7 @@ test('a theme picked in Settings overrides the system and is remembered', async 
   await page.emulateMedia({ colorScheme: 'light' })
   await page.getByRole('link', { name: 'Settings' }).click()
   await page.getByRole('radio', { name: 'Dark' }).check()
-  expect(await pageBackground(page)).not.toBe(WHITE)
+  expect(await pageBackground(page)).toBe('rgb(18, 18, 18)')
   await page.getByRole('radio', { name: 'System' }).check()
   expect(await pageBackground(page)).toBe(WHITE)
 })
@@ -88,4 +88,21 @@ test('buttons and fields use the same font as the rest of the app', async ({ pag
   await page.getByRole('button', { name: 'Paste a Song' }).click()
   expect(await fontOf(page.getByRole('button', { name: 'Save' }))).toBe(appFont)
   expect(await fontOf(page.getByLabel('Lyrics'))).toBe(appFont)
+})
+
+test('the browser bar takes the picked theme, and the system one again after System', async ({ page }) => {
+  const barColours = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map((meta) => meta.content),
+    )
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  expect(await barColours()).toEqual(['#ffffff', '#121212'])
+
+  await page.getByRole('radio', { name: 'Light' }).check()
+  expect(await barColours()).toEqual([WHITE, WHITE])
+
+  await page.getByRole('radio', { name: 'System' }).check()
+  expect(await barColours()).toEqual(['#ffffff', '#121212'])
 })
