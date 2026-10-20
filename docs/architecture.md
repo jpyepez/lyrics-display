@@ -1,7 +1,7 @@
 # Architecture
 
 - **Static, no backend.** The app ships as static files plus a service worker (PWA, works offline). Anything that would need a server is out of scope unless a decision record says otherwise.
-- **Hosting** is Cloudflare, serving `dist` as static assets (`wrangler.jsonc`) at https://lyrics-display.lyrics-display.workers.dev. `bun run deploy` builds and publishes; it needs `bunx wrangler@4 login` once per machine.
+- **Hosting** is Cloudflare, serving `dist` as static assets (`wrangler.jsonc`) at https://lyrics-display.jpyepez.workers.dev. `bun run deploy` builds and publishes; it needs `bunx wrangler@4 login` once per machine.
 - **Lyrics search** calls the LRCLIB API (`https://lrclib.net/api/search`) straight from the browser. Paste is the fallback for every case search can't cover (no result, instrumental, wrong lyrics).
 - **Library** lives in browser storage on each device; there are no accounts and no sync. Export/import of a library file is the backup and the only cross-device path.
 - **App-wide settings** (paper size and orientation, theme), the time of the last Backup that paces the nudge to export, and whether the app has asked for persistent storage (asked once, on first use), live in localStorage behind `src/app/settings.ts`, read synchronously while rendering. They are small and easy to set again, so they stay out of the Library and its export file.
