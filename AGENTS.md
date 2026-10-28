@@ -6,7 +6,7 @@ A static PWA (Vite + React + TypeScript) for showing song lyrics while playing g
 
 ## Rules
 - Test fixtures, seed data and screenshots use invented placeholder lyrics, never real song lyrics: they are copyrighted and get committed.
-- **Browser verification** closes every ticket and bug fix, before committing: follow [the steps](./docs/browser-verification.md).
+- **Browser verification** closes every ticket and bug fix, before committing and opening its PR: follow [the steps](./docs/browser-verification.md).
 
 ## Deep Context
 IMPORTANT: Before starting a task, identify which of these files are relevant and read them.
@@ -19,7 +19,9 @@ IMPORTANT: Before starting a task, identify which of these files are relevant an
 
 ### Issue tracker
 
-Issues and specs are local markdown files under `.work/`. See `docs/agents/issue-tracker.md`.
+Issues and specs are GitHub issues, managed with `gh`, on the [lyrics-display board](https://github.com/users/jpyepez/projects/3). A spec is a parent issue with its tickets as sub-issues. A merged PR with `Closes #<n>` closes a code ticket; `gh issue close` is only for work that ships no code. See `docs/agents/issue-tracker.md`.
+
+Active specs are issues labelled `ready` that have sub-issues: read the relevant one (`gh issue view <n> --json number,title,body,labels,comments`) before implementing a feature. Finished specs and tickets from before the move to GitHub: `docs/archive.md`.
 
 ### Triage labels
 
@@ -27,8 +29,8 @@ The five default triage labels, with `ready-for-agent` written as `ready`. See `
 
 ### Domain docs
 
-Glossary in `CONTEXT.md`, ADRs in `docs/adr/`, out-of-scope records in `.out-of-scope/`; all writable. See `docs/agents/domain.md`.
+Glossary in `GLOSSARY.md`, ADRs in `docs/adr/`, out-of-scope records in `docs/out-of-scope/`; all writable. See `docs/agents/domain.md`.
 
 ### Notes
 
-Scratch notes go in `.work/notes/`.
+Running notes and rough ideas are GitHub issues: label `notes` for running notes, `needs-triage` for an idea to sort later. There is no `.work/` folder.

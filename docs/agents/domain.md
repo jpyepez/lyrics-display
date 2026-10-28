@@ -5,9 +5,10 @@ How the engineering skills should consume this repo's domain documentation when 
 ## Where they live
 
 - **Glossaries** (read every one, in this order):
-  - `CONTEXT.md`: writable
+  - `GLOSSARY.md`: writable
 - **ADRs**: `docs/adr/`: writable
-- **Out of scope**: `.out-of-scope/`: writable
+- **Out of scope**: `docs/out-of-scope/`: writable
+- **Notes**: GitHub issues labelled `notes`
 
 Each entry is `writable` or `read-only`. Read all of them; write new terms, ADRs and rejections only to a `writable` one. A term that conflicts with a `read-only` glossary is flagged, never redefined.
 
