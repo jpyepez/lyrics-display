@@ -3,7 +3,8 @@ import { navigate, routes } from '../app/route'
 import { useLastBackup } from '../app/settings'
 import type { Song } from '../song/song'
 import { EXPORT_FAILED, isBackupDue, recordBackup, useExportLibrary } from './backup'
-import { deleteSong, listSongs, matchesFilter, restoreSong } from './library'
+import { deleteSong, listSongs, restoreSong } from './library'
+import { filterSongs } from './libraryFilter'
 
 /** How long the Undo toast stays after a delete. */
 const UNDO_MS = 5000
@@ -43,7 +44,7 @@ export function LibraryView() {
 
   const { exportFile, exportFailed } = useExportLibrary()
 
-  const shown = songs?.filter((song) => matchesFilter(song, filter))
+  const shown = songs && filterSongs(songs, filter)
 
   return (
     <main className="library">
