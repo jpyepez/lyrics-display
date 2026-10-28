@@ -1,4 +1,5 @@
-// Cloudflare hosting: the built app is served as static files. Deploy with `bun run deploy`.
+// Cloudflare hosting: the built app is served as static files. Merges to main deploy once CI passes
+// (.github/workflows/deploy.yml); `bun run deploy` still deploys by hand.
 {
   "name": "lyrics-display",
   "compatibility_date": "2026-10-12",
