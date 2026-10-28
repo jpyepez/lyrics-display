@@ -107,12 +107,6 @@ export async function listSongs(): Promise<Song[]> {
   return all.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }))
 }
 
-/** Whether part of the Song's title or artist matches the Library filter, ignoring case. */
-export function matchesFilter(song: Song, filter: string): boolean {
-  const needle = filter.trim().toLowerCase()
-  return song.title.toLowerCase().includes(needle) || song.artist.toLowerCase().includes(needle)
-}
-
 /** Saves changes to a Song already in the Library. */
 export async function updateSong(song: Song): Promise<Song> {
   const updated: Song = { ...song, updatedAt: Date.now() }

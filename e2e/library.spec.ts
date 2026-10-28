@@ -96,3 +96,29 @@ test('a deleted Song stays deleted once the Undo toast is gone', async ({ page }
   await page.reload()
   await expect(page.getByText('No Songs yet.')).toBeVisible()
 })
+
+test('the Library filter finds Songs despite typos and word order, exact matches first', async ({ page }) => {
+  await pasteSong(page, 'Candle Waltz', 'The Stand-ins')
+  await pasteSong(page, 'Meadow Song', 'The Placeholders')
+  await pasteSong(page, 'Latern Hill', 'Pebble Choir')
+  await pasteSong(page, 'Lantern', 'Pebble Choir')
+  await openLibrary(page)
+  const filter = page.getByRole('searchbox', { name: 'Filter' })
+
+  for (const typed of ['candel', 'wlatz']) {
+    await filter.fill(typed)
+    await expect(listedTitles(page)).toHaveText(['Candle Waltz The Stand-ins'])
+  }
+
+  for (const typed of ['placholders', 'song meadow', 'meadow placeholders']) {
+    await filter.fill(typed)
+    await expect(listedTitles(page)).toHaveText(['Meadow Song The Placeholders'])
+  }
+
+  await filter.fill('lantern')
+  await expect(listedTitles(page)).toHaveText(['Lantern Pebble Choir', 'Latern Hill Pebble Choir'])
+
+  await filter.fill('cnd')
+  await expect(listedTitles(page)).toHaveCount(0)
+  await expect(page.getByText('No Songs match “cnd”.')).toBeVisible()
+})
