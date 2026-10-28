@@ -16,6 +16,7 @@ The Library store and React components have no tests of their own; the Playwrigh
 - `bun run test`: all unit tests. `bunx vitest run src/song/lyrics.test.ts` for one file.
 - `bun run test:e2e`: Playwright. It builds the app and serves it with `vite preview` on port 4173 (reused if already running). `bunx playwright test e2e/paste-song.spec.ts` for one file.
 - `bun run typecheck`: `tsc -b`, covers `src`, `e2e` and the configs.
+- CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and e2e on every PR and push to `main`.
 
 ## Conventions
 
