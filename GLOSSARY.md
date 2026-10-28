@@ -36,6 +36,14 @@ _Avoid_: Backup file, dump
 Exporting a Library file. The Library nudges for one when it has had none for a week.
 _Avoid_: Reminder, sync
 
+**Library filter**:
+Narrowing the Library list to the Songs whose title or artist match what the user types.
+_Avoid_: Search, Library search
+
+**Lyrics search**:
+Looking up a Song's Lyrics on LRCLIB by title and artist, to add it to the Library.
+_Avoid_: Lookup, Library search
+
 ## Display
 
 **Screen**:
