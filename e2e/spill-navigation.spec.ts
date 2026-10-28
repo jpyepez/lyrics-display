@@ -48,9 +48,10 @@ test('a long Song Spills onto Screens that the keyboard moves between', async ({
   await expect(screenIndicator(page)).toHaveText(`2/${count}`)
   const second = await shownLabels(page)
   expect(second).not.toContain('Verse 1')
-  // At 1280×800 three columns of four Stanzas fill the first Screen; the second picks up after them.
-  expect(first.at(-1)).toBe('Verse 12')
-  expect(second[0]).toBe('Verse 13')
+  // The second Screen picks up right after the last Stanza of the first. How many fit depends on the
+  // platform's system font, so the test reads it off the first Screen.
+  const lastFirst = Number(first.at(-1)!.replace('Verse ', ''))
+  expect(second[0]).toBe(`Verse ${lastFirst + 1}`)
   await expectAllVisible(page)
 
   await page.keyboard.press('ArrowLeft')
@@ -144,16 +145,18 @@ test('changing the layout keeps the Stanza that was at the top of the Screen in 
   await page.setViewportSize({ width: 1280, height: 800 })
   await pasteSong(page, longLyrics)
   await expect(screenIndicator(page)).toHaveText(/^1\//)
+  // Every full Screen holds as many Stanzas as the first (how many depends on the platform's system font).
+  const perScreen = (await shownLabels(page)).length
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('ArrowRight')
   await expect(screenIndicator(page)).toHaveText(/^3\//)
-  // Three columns of four Stanzas a Screen: the third Screen starts at Verse 25.
-  expect((await shownLabels(page))[0]).toBe('Verse 25')
+  const top = `Verse ${2 * perScreen + 1}`
+  expect((await shownLabels(page))[0]).toBe(top)
 
   const before = await screenIndicator(page).innerText()
 
   // Two columns hold fewer Stanzas a Screen, so the third Screen alone would now show earlier ones.
   await page.getByRole('button', { name: 'Fewer columns' }).click()
   await expect(screenIndicator(page)).not.toHaveText(before)
-  expect(await shownLabels(page)).toContain('Verse 25')
+  expect(await shownLabels(page)).toContain(top)
 })
