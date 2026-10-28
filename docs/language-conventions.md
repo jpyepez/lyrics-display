@@ -3,7 +3,7 @@
 ## Layout
 
 - Code is grouped by domain area, not by kind: `src/song/` (Song type, Lyrics parser, Song views), `src/library/` (Library store, Library list, Lyrics search), `src/app/` (shell and routing).
-- Names follow `CONTEXT.md`: Song, Lyrics, Stanza, Section Label, Library, Screen, Sheet, Fit. Not verse, block, track or page.
+- Names follow `GLOSSARY.md`: Song, Lyrics, Stanza, Section Label, Library, Screen, Sheet, Fit. Not verse, block, track or page.
 
 ## Pure functions vs components
 
