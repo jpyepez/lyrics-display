@@ -1,0 +1,98 @@
+name: Triage
+
+# Triages each issue the owner opens: one category label, one outcome label, a comment
+# saying why. Runnable by hand on an existing issue from the Actions tab.
+# The agent follows .github/prompts/triage.md; docs/agents/triage-labels.md describes the flow.
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number to triage
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triage-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # The owner's PAT: GITHUB_TOKEN can't edit the user-owned Project, and the labels it
+      # applied wouldn't start the Implement workflow.
+      GH_TOKEN: ${{ secrets.OWNER_PAT }}
+      ISSUE: ${{ github.event.issue.number || inputs.issue }}
+      OWNER: ${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Also skips an issue opened already triaged, such as a ticket a local session filed as
+      # `ready`; a dispatch still re-triages it.
+      - name: Skip issues not opened by the owner, notes, specs, pathfinder and triaged issues
+        id: check
+        run: |
+          author=$(gh issue view "$ISSUE" --json author --jq .author.login)
+          labels=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')
+          skip=false
+          [ "$author" = "$OWNER" ] || skip=true
+          for label in $labels; do
+            case $label in
+              notes | spec | pathfinder:*) skip=true ;;
+              ready | needs-info | ready-for-human | wontfix)
+                [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || skip=true
+                ;;
+            esac
+          done
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          echo "#$ISSUE by $author, labels: ${labels:-none}, skip: $skip"
+
+      # So the agent can run tests when reproducing a bug.
+      - if: steps.check.outputs.skip == 'false'
+        uses: oven-sh/setup-bun@v2
+      - if: steps.check.outputs.skip == 'false'
+        run: bun install --frozen-lockfile
+
+      - if: steps.check.outputs.skip == 'false'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.OWNER_PAT }}
+          prompt: |
+            Triage issue #${{ env.ISSUE }} in ${{ github.repository }}.
+            Read .github/prompts/triage.md and follow it.
+          claude_args: --max-turns 30 --allowedTools Bash,Read,Write,Glob,Grep
+
+      - name: Check the outcome and set the board Status
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          labels=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')
+          claimed=$(gh issue view "$ISSUE" --json assignees --jq '.assignees | length')
+          categories=0
+          outcomes=0
+          outcome=
+          for label in $labels; do
+            case $label in
+              bug | enhancement | documentation) categories=$((categories + 1)) ;;
+              ready | needs-info | ready-for-human | wontfix | needs-triage)
+                outcomes=$((outcomes + 1))
+                outcome=$label
+                ;;
+            esac
+          done
+          if [ "$categories" -ne 1 ] || [ "$outcomes" -ne 1 ] || [ "$outcome" = needs-triage ]; then
+            echo "::error::#$ISSUE needs one category and one outcome label, has: ${labels:-none}"
+            exit 1
+          fi
+          case $outcome in
+            # Implement may already have claimed it and moved it to In progress.
+            ready) [ "$claimed" -gt 0 ] || scripts/board-status.sh "$ISSUE" Ready ;;
+            *) scripts/board-status.sh "$ISSUE" HITL ;;
+          esac
