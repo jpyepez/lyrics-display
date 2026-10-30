@@ -10,23 +10,26 @@ on:
 permissions:
   contents: read
 
-# One run at a time. GitHub keeps one pending run per group, so a third `ready` while one
-# runs and one waits replaces the waiting one.
-concurrency:
-  group: implement
-  cancel-in-progress: false
-
 jobs:
   implement:
+    # A spec parent can be labelled `ready` before its tickets are attached, so the `spec`
+    # label is what marks it; the sub-issue check below is a second guard.
     if: >-
       github.event.label.name == 'ready' &&
+      !contains(github.event.issue.labels.*.name, 'spec') &&
       github.event.issue.user.login == github.repository_owner &&
       github.event.sender.login == github.repository_owner
+    # One run at a time. Set on the job, not the workflow, so the runs every other label
+    # starts (and skips) never join the queue. GitHub keeps one pending run per group, so a
+    # third `ready` while one runs and one waits replaces the waiting one.
+    concurrency:
+      group: implement
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
       # The owner's PAT, so pushes and PRs start CI and the Project can be edited.
-      GH_TOKEN: ${{ secrets.BOT_PAT }}
+      GH_TOKEN: ${{ secrets.OWNER_PAT }}
       ISSUE: ${{ github.event.issue.number }}
       BRANCH: auto/issue-${{ github.event.issue.number }}
     steps:
@@ -34,19 +37,19 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.BOT_PAT }}
+          token: ${{ secrets.OWNER_PAT }}
 
       # A run may have waited in the queue, so read the issue as it is now.
       - name: Skip spec parents and issues no longer ready
         id: check
         run: |
           state=$(gh issue view "$ISSUE" --json state --jq .state)
-          ready=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | index("ready") != null')
+          ready=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | index("ready") != null and index("spec") == null')
           children=$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE" --jq '.sub_issues_summary.total // 0')
           skip=false
           if [ "$state" != OPEN ] || [ "$ready" != true ] || [ "$children" -gt 0 ]; then skip=true; fi
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
-          echo "#$ISSUE state: $state, ready: $ready, sub-issues: $children, skip: $skip"
+          echo "#$ISSUE state: $state, ready and not a spec: $ready, sub-issues: $children, skip: $skip"
 
       - if: steps.check.outputs.skip == 'false'
         uses: oven-sh/setup-bun@v2
@@ -79,7 +82,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ secrets.BOT_PAT }}
+          github_token: ${{ secrets.OWNER_PAT }}
           prompt: |
             Implement issue #${{ env.ISSUE }} in ${{ github.repository }} on branch ${{ env.BRANCH }}.
             Read .github/prompts/implement.md and follow it.
@@ -100,6 +103,9 @@ jobs:
           if [ -z "$pr" ] && git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
             gh pr create --draft --base main --head "$BRANCH" --title "WIP: #$ISSUE" \
               --body "The Implement run stopped before opening a PR ($CLAUDE_OUTCOME): $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Part of issue $ISSUE."
+          fi
+          if [ "${pr#* }" = false ]; then
+            gh pr ready "${pr% *}" --undo
           fi
           if [ -z "$pr" ]; then
             gh issue comment "$ISSUE" --body "The Implement run stopped before opening a PR ($CLAUDE_OUTCOME), so this goes back to the owner: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

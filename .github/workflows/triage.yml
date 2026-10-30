@@ -28,13 +28,15 @@ jobs:
     env:
       # The owner's PAT: GITHUB_TOKEN can't edit the user-owned Project, and the labels it
       # applied wouldn't start the Implement workflow.
-      GH_TOKEN: ${{ secrets.BOT_PAT }}
+      GH_TOKEN: ${{ secrets.OWNER_PAT }}
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
       OWNER: ${{ github.repository_owner }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Skip issues not opened by the owner, notes and pathfinder issues
+      # Also skips an issue opened already triaged, such as a ticket a local session filed as
+      # `ready`; a dispatch still re-triages it.
+      - name: Skip issues not opened by the owner, notes, specs, pathfinder and triaged issues
         id: check
         run: |
           author=$(gh issue view "$ISSUE" --json author --jq .author.login)
@@ -42,7 +44,12 @@ jobs:
           skip=false
           [ "$author" = "$OWNER" ] || skip=true
           for label in $labels; do
-            case $label in notes | pathfinder:*) skip=true ;; esac
+            case $label in
+              notes | spec | pathfinder:*) skip=true ;;
+              ready | needs-info | ready-for-human | wontfix)
+                [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || skip=true
+                ;;
+            esac
           done
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
           echo "#$ISSUE by $author, labels: ${labels:-none}, skip: $skip"
@@ -57,7 +64,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ secrets.BOT_PAT }}
+          github_token: ${{ secrets.OWNER_PAT }}
           prompt: |
             Triage issue #${{ env.ISSUE }} in ${{ github.repository }}.
             Read .github/prompts/triage.md and follow it.

@@ -21,7 +21,7 @@ Pick exactly one outcome:
 - **`ready`**: the issue meets every point of the `ready` bar below. Labelling it `ready` starts the Implement workflow, which builds it with no one watching, so apply it only when you are sure.
 - **`needs-info`**: you have questions only the owner can answer.
 - **`ready-for-human`**: it's clear, but fails the `ready` bar.
-- **`wontfix`**: a duplicate, already done, covered by an out-of-scope record, or not worth doing. Recommend it; never close the issue.
+- **`wontfix`**: a duplicate, already done, covered by an out-of-scope record, or not worth doing. Apply the label and recommend it in your comment; never close the issue: the owner does.
 
 ### The `ready` bar
 
