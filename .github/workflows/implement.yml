@@ -1,0 +1,108 @@
+name: Implement
+
+# Builds an issue once the owner (or Triage, acting as the owner) labels it `ready`, and opens
+# a PR that closes it. Nothing merges here; Deploy only runs on main.
+# The agent follows .github/prompts/implement.md; docs/agents/issue-tracker.md describes the flow.
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+# One run at a time. GitHub keeps one pending run per group, so a third `ready` while one
+# runs and one waits replaces the waiting one.
+concurrency:
+  group: implement
+  cancel-in-progress: false
+
+jobs:
+  implement:
+    if: >-
+      github.event.label.name == 'ready' &&
+      github.event.issue.user.login == github.repository_owner &&
+      github.event.sender.login == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # The owner's PAT, so pushes and PRs start CI and the Project can be edited.
+      GH_TOKEN: ${{ secrets.BOT_PAT }}
+      ISSUE: ${{ github.event.issue.number }}
+      BRANCH: auto/issue-${{ github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.BOT_PAT }}
+
+      # A run may have waited in the queue, so read the issue as it is now.
+      - name: Skip spec parents and issues no longer ready
+        id: check
+        run: |
+          state=$(gh issue view "$ISSUE" --json state --jq .state)
+          ready=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | index("ready") != null')
+          children=$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE" --jq '.sub_issues_summary.total // 0')
+          skip=false
+          if [ "$state" != OPEN ] || [ "$ready" != true ] || [ "$children" -gt 0 ]; then skip=true; fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          echo "#$ISSUE state: $state, ready: $ready, sub-issues: $children, skip: $skip"
+
+      - if: steps.check.outputs.skip == 'false'
+        uses: oven-sh/setup-bun@v2
+      - if: steps.check.outputs.skip == 'false'
+        run: bun install --frozen-lockfile
+      - if: steps.check.outputs.skip == 'false'
+        run: bunx playwright install --with-deps chromium
+
+      # gh pr comment --attach, for the screenshots, needs gh 2.103 or later.
+      - name: Make sure gh is 2.103 or later
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          have=$(gh --version | awk 'NR == 1 { print $3 }')
+          if [ "$(printf '%s\n' 2.103.0 "$have" | sort -V | head -n 1)" != 2.103.0 ]; then
+            gh release download --repo cli/cli --pattern 'gh_*_linux_amd64.deb' --dir "$RUNNER_TEMP/gh"
+            sudo dpkg -i "$RUNNER_TEMP"/gh/gh_*_linux_amd64.deb
+          fi
+          gh --version
+
+      - name: Claim the issue
+        id: claim
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          gh issue edit "$ISSUE" --add-assignee @me
+          scripts/board-status.sh "$ISSUE" "In progress"
+
+      - id: claude
+        if: steps.claim.outcome == 'success'
+        timeout-minutes: 100
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.BOT_PAT }}
+          prompt: |
+            Implement issue #${{ env.ISSUE }} in ${{ github.repository }} on branch ${{ env.BRANCH }}.
+            Read .github/prompts/implement.md and follow it.
+          claude_args: --max-turns 80 --allowedTools Bash,Read,Write,Edit,Glob,Grep,TodoWrite
+
+      # Any run that doesn't end in a ready-for-review PR hands the issue to the owner: the agent
+      # gave up (draft PR), ran out of turns or time, or crashed.
+      - name: Hand off to the owner if unfinished
+        if: always() && steps.claim.outcome == 'success'
+        env:
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+        run: |
+          pr=$(gh pr list --head "$BRANCH" --state open --json number,isDraft --jq '.[0] // empty | "\(.number) \(.isDraft)"')
+          if [ "$CLAUDE_OUTCOME" = success ] && [ -n "$pr" ] && [ "${pr#* }" = false ]; then
+            echo "PR #${pr% *} is ready for review"
+            exit 0
+          fi
+          if [ -z "$pr" ] && git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            gh pr create --draft --base main --head "$BRANCH" --title "WIP: #$ISSUE" \
+              --body "The Implement run stopped before opening a PR ($CLAUDE_OUTCOME): $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Part of issue $ISSUE."
+          fi
+          if [ -z "$pr" ]; then
+            gh issue comment "$ISSUE" --body "The Implement run stopped before opening a PR ($CLAUDE_OUTCOME), so this goes back to the owner: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
+          gh issue edit "$ISSUE" --remove-label ready --add-label ready-for-human
+          scripts/board-status.sh "$ISSUE" HITL

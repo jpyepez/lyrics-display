@@ -53,21 +53,33 @@ Reference the issue as `#<number>` in the commit message (e.g. `Closes #42` on t
 - **Promote, don't duplicate.** When a spec comes out of an existing issue (usually an inbox item after triage), replace that issue's body with the spec instead of opening a new issue. First post the original body as a comment headed `Original note:` so it stays readable. Retitle the issue if the scope changed.
 - **PRs close tickets**: see "When a skill says close or resolve a ticket" above.
 - **Claim before working**: before implementing an issue, assign it with `gh issue edit <n> --add-assignee @me` and set its board Status to In progress (below).
-- **Board**: the [lyrics-display project](https://github.com/users/jpyepez/projects/3) is one board with a column per Status: Inbox, Ready, In progress, Done. GitHub's built-in workflows add new issues to Inbox and move closed issues to Done. Keep Status in step with the triage label whenever you change one:
+- **Board**: the [lyrics-display project](https://github.com/users/jpyepez/projects/3) is one board with a column per Status: Inbox, HITL, Ready, In progress, Done. GitHub's built-in workflows add new issues to Inbox and move closed issues to Done. HITL holds what waits on the owner; Ready holds only what a bot may build. Keep Status in step with the triage label whenever you change one:
 
   | Change | Status |
   | --- | --- |
-  | `needs-triage` or `needs-info` applied | Inbox (`549ca079`) |
-  | `ready` or `ready-for-human` applied | Ready (`d1c6b124`) |
+  | `needs-triage` applied | Inbox (`549ca079`) |
+  | `needs-info`, `ready-for-human` or `wontfix` applied | HITL (`bc2c8ae3`) |
+  | `ready` applied | Ready (`d1c6b124`) |
   | Issue claimed | In progress (`37a6af55`) |
 
-  Set it with two commands. `item-add` returns the issue's card, adding it first if it isn't on the board yet:
+  Set it with `scripts/board-status.sh <n> <Inbox|HITL|Ready|In progress>`, which adds the issue to the board first if it isn't there. It runs these two commands:
 
   ```sh
   item=$(gh project item-add 3 --owner jpyepez --url https://github.com/jpyepez/lyrics-display/issues/<n> --format json --jq .id)
   gh project item-edit --project-id PVT_kwHOAJXAFM4BpG0W --id "$item" --field-id PVTSSF_lAHOAJXAFM4BpG0Wzhnj5Ps --single-select-option-id <option-id>
   ```
 - **Not issues**: glossary, ADRs and out-of-scope records stay as files (see `domain.md`).
+
+## Automation
+
+Two GitHub Actions workflows act on issues the owner opens. Issues opened by anyone else run neither.
+
+- **Triage** (`.github/workflows/triage.yml`, prompt `.github/prompts/triage.md`) runs when the owner opens an issue, or by hand from the Actions tab with an issue number (`gh workflow run triage.yml -f issue=<n>`). It skips issues labelled `notes` or `pathfinder:*`. It leaves the issue with one category label, one outcome (`ready`, `needs-info`, `ready-for-human`, or `wontfix` recommended with the issue still open) and a comment giving its reasons, promotes a spec into the body for `ready`, and sets the board Status from the table above. The run fails if the labels don't come out that way. The `ready` bar is in `triage-labels.md`. Nothing re-runs triage: relabel by hand or dispatch it again.
+- **Implement** (`.github/workflows/implement.yml`, prompt `.github/prompts/implement.md`) runs when the owner labels an issue `ready`; labels Triage applies count, since it acts as the owner. It skips spec parents (issues with sub-issues) and runs one at a time: a second `ready` waits for the running one, and a third replaces the waiting one, so relabel it once the queue clears. It claims the issue, builds it on `auto/issue-<n>`, runs lint, typecheck, unit tests, e2e and a headless browser verification, and opens a PR with `Closes #<n>` and a screenshot comment. A run that can't get green, finds the ticket bigger than triage said, runs out of turns or time, or crashes ends in a draft PR when there is a branch, with the issue relabelled `ready-for-human` and moved to HITL.
+
+Nothing merges automatically, and Deploy only runs on `main`, so nothing ships until the owner merges.
+
+Both workflows act through `BOT_PAT`, a fine-grained PAT of the owner's with read and write access to contents, issues and pull requests on this repo and to the Project. `GITHUB_TOKEN` won't do: the events it causes don't start other workflows, so `ready` would never start Implement and CI wouldn't run on bot PRs, and it can't edit a user-owned Project. Claude runs on `CLAUDE_CODE_OAUTH_TOKEN`. `--max-turns` (30 for triage, 80 for implement) and `timeout-minutes` cap each run.
 
 ## Wayfinding operations
 
