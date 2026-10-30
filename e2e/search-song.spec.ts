@@ -152,6 +152,29 @@ test('a rate-limited search waits as long as LRCLIB asks, without retrying', asy
   await expectPasteFormFor(page, 'Kettle Waltz', 'The Stand-ins')
 })
 
+test('a busy LRCLIB (503 with retry-after) waits like a rate limit, without retrying', async ({ page }) => {
+  let requests = 0
+  await stubSearch(page, async (route) => {
+    requests += 1
+    await route.fulfill({
+      status: 503,
+      headers: { 'retry-after': '1', 'access-control-expose-headers': 'retry-after' },
+      json: { message: 'The server is busy, please retry in a moment' },
+    })
+  })
+  await page.clock.install()
+
+  await search(page, 'Kettle Waltz', 'The Stand-ins')
+
+  await expect(page.getByRole('alert')).toHaveText('LRCLIB is busy. Try again in 1 second, or Paste the Lyrics')
+  const searchButton = page.getByRole('button', { name: 'Search' })
+  await expect(searchButton).toBeDisabled()
+
+  await page.clock.fastForward(1_000)
+  await expect(searchButton).toBeEnabled()
+  expect(requests).toBe(1)
+})
+
 test('a failing search says so and points to paste', async ({ page }) => {
   await stubSearch(page, (route) => route.fulfill({ status: 500, body: 'Internal Server Error' }))
 

@@ -62,25 +62,28 @@ export function resultDetail({ duration, lyrics }: SearchResult): string {
   return parts.join(' · ')
 }
 
-/** `retry-after` in whole seconds; it is either a number of seconds or an HTTP date. */
-function retryAfterSeconds(header: string | null): number {
-  if (header === null) return DEFAULT_RETRY_AFTER_SECONDS
+/** `retry-after` in whole seconds (a number of seconds or an HTTP date), or null when absent or unreadable. */
+function retryAfterSeconds(header: string | null): number | null {
+  if (header === null) return null
   const seconds = /^\d+$/.test(header.trim()) ? Number(header) : (Date.parse(header) - Date.now()) / 1000
-  return Number.isNaN(seconds) ? DEFAULT_RETRY_AFTER_SECONDS : Math.max(1, Math.ceil(seconds))
+  return Number.isNaN(seconds) ? null : Math.max(1, Math.ceil(seconds))
 }
 
 /**
  * Searches LRCLIB once by title and, when given, artist. It never retries: a rate limit
- * comes back with how long LRCLIB asked to wait.
+ * (or a 503 with a `retry-after`) comes back with how long LRCLIB asked to wait.
  */
 export async function searchLyrics(title: string, artist: string): Promise<SearchOutcome> {
   const query = new URLSearchParams({ track_name: title })
   if (artist) query.set('artist_name', artist)
   try {
     const response = await fetch(`${SEARCH_URL}?${query}`)
+    const wait = retryAfterSeconds(response.headers.get('retry-after'))
     if (response.status === 429) {
-      return { kind: 'rate-limited', retryAfterSeconds: retryAfterSeconds(response.headers.get('retry-after')) }
+      return { kind: 'rate-limited', retryAfterSeconds: wait ?? DEFAULT_RETRY_AFTER_SECONDS }
     }
+    // A busy server (503) that says how long to wait is handled like a rate limit; without a wait it is an error.
+    if (response.status === 503 && wait !== null) return { kind: 'rate-limited', retryAfterSeconds: wait }
     if (!response.ok) return { kind: 'error' }
     const tracks = (await response.json()) as LrclibTrack[]
     if (tracks.length === 0) return { kind: 'empty' }
