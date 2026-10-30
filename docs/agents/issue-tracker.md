@@ -79,7 +79,7 @@ Two GitHub Actions workflows act on issues the owner opens. Issues opened by any
 
 Nothing merges automatically, and Deploy only runs on `main`, so nothing ships until the owner merges.
 
-Both workflows act through `OWNER_PAT`, a fine-grained PAT of the owner's with read and write access to contents, issues and pull requests on this repo and to the Project. `GITHUB_TOKEN` won't do: the events it causes don't start other workflows, so `ready` would never start Implement and CI wouldn't run on bot PRs, and it can't edit a user-owned Project. Claude runs on `CLAUDE_CODE_OAUTH_TOKEN`. `--max-turns` (30 for triage, 80 for implement) and `timeout-minutes` cap each run.
+Both workflows act through `OWNER_PAT`, a classic PAT of the owner's with the scopes `repo`, `project` and `read:org`, and not `workflow`, so the bots can't edit their own workflows. A fine-grained PAT can't reach a user-owned Project, and `gh project` needs `read:org` to tell a user owner from an organization ("unknown owner type" without it). `GITHUB_TOKEN` won't do: the events it causes don't start other workflows, so `ready` would never start Implement and CI wouldn't run on bot PRs, and it can't edit a user-owned Project. Claude runs on `CLAUDE_CODE_OAUTH_TOKEN`. `--max-turns` (30 for triage, 80 for implement) and `timeout-minutes` cap each run.
 
 ## Wayfinding operations
 
