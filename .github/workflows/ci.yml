@@ -20,7 +20,6 @@ jobs:
       # Also runs shellcheck (preinstalled on the runner) on every run: block.
       - run: bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
       - run: ./actionlint -color
-      - run: shellcheck scripts/*.sh
 
   checks:
     runs-on: ubuntu-latest

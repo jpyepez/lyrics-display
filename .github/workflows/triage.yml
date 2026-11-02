@@ -96,6 +96,6 @@ jobs:
           fi
           case $outcome in
             # Implement may already have claimed it and moved it to In progress.
-            ready) [ "$claimed" -gt 0 ] || scripts/board-status.sh "$ISSUE" Ready ;;
-            *) scripts/board-status.sh "$ISSUE" HITL ;;
+            ready) [ "$claimed" -gt 0 ] || bun run board-status "$ISSUE" Ready ;;
+            *) bun run board-status "$ISSUE" HITL ;;
           esac
