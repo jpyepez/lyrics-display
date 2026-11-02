@@ -53,17 +53,22 @@ function statusOptions(): StatusOption[] {
   return status.options
 }
 
+// Also used by scripts/triage-outcome.ts. Returns the column's name as the board spells it.
+export function moveToColumn(issue: number, column: string): string {
+  const option = findOption(statusOptions(), column)
+  const url = `https://github.com/${REPO}/issues/${issue}`
+  const item = gh(['project', 'item-add', PROJECT_NUMBER, '--owner', OWNER, '--url', url, '--format', 'json', '--jq', '.id'])
+  gh([
+    'project', 'item-edit', '--project-id', PROJECT_ID, '--id', item,
+    '--field-id', STATUS_FIELD_ID, '--single-select-option-id', option.id,
+  ])
+  return option.name
+}
+
 if (import.meta.main) {
   try {
     const { issue, column } = parseArgs(process.argv.slice(2))
-    const option = findOption(statusOptions(), column)
-    const url = `https://github.com/${REPO}/issues/${issue}`
-    const item = gh(['project', 'item-add', PROJECT_NUMBER, '--owner', OWNER, '--url', url, '--format', 'json', '--jq', '.id'])
-    gh([
-      'project', 'item-edit', '--project-id', PROJECT_ID, '--id', item,
-      '--field-id', STATUS_FIELD_ID, '--single-select-option-id', option.id,
-    ])
-    console.log(`#${issue} → ${option.name}`)
+    console.log(`#${issue} → ${moveToColumn(issue, column)}`)
   } catch (error) {
     console.error(error instanceof Error ? error.message : error)
     process.exit(1)
