@@ -8,8 +8,8 @@
 
 import { execFileSync } from 'node:child_process'
 
-const OWNER = 'jpyepez'
-const REPO = 'jpyepez/lyrics-display'
+export const OWNER = 'jpyepez'
+export const REPO = 'jpyepez/lyrics-display'
 const PROJECT_NUMBER = '3'
 const PROJECT_ID = 'PVT_kwHOAJXAFM4BpG0W'
 const STATUS_FIELD_ID = 'PVTSSF_lAHOAJXAFM4BpG0Wzhnj5Ps'
@@ -35,7 +35,7 @@ export function findOption(options: StatusOption[], column: string): StatusOptio
   return option
 }
 
-function gh(args: string[]): string {
+export function gh(args: string[]): string {
   try {
     return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
   } catch (error) {

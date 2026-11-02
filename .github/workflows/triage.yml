@@ -63,6 +63,16 @@ jobs:
       - if: steps.check.outputs.skip == 'false'
         run: bun install --frozen-lockfile
 
+      # Labels from an earlier triage already pass on a re-run, so the outcome check also needs a
+      # triage comment newer than this one: the issue's newest comment id, 0 if it has none.
+      - name: Note the newest comment before the agent runs
+        id: marker
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          since=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments?per_page=100" --jq '.[].id' | sort -n | tail -n 1)
+          echo "since=${since:-0}" >> "$GITHUB_OUTPUT"
+          echo "#$ISSUE newest comment before triage: ${since:-none}"
+
       - if: steps.check.outputs.skip == 'false'
         uses: anthropics/claude-code-action@v1
         with:
@@ -75,27 +85,7 @@ jobs:
 
       - name: Check the outcome and set the board Status
         if: steps.check.outputs.skip == 'false'
-        run: |
-          labels=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')
-          claimed=$(gh issue view "$ISSUE" --json assignees --jq '.assignees | length')
-          categories=0
-          outcomes=0
-          outcome=
-          for label in $labels; do
-            case $label in
-              bug | enhancement | documentation) categories=$((categories + 1)) ;;
-              ready | needs-info | ready-for-human | wontfix | needs-triage)
-                outcomes=$((outcomes + 1))
-                outcome=$label
-                ;;
-            esac
-          done
-          if [ "$categories" -ne 1 ] || [ "$outcomes" -ne 1 ] || [ "$outcome" = needs-triage ]; then
-            echo "::error::#$ISSUE needs one category and one outcome label, has: ${labels:-none}"
-            exit 1
-          fi
-          case $outcome in
-            # Implement may already have claimed it and moved it to In progress.
-            ready) [ "$claimed" -gt 0 ] || bun run board-status "$ISSUE" Ready ;;
-            *) bun run board-status "$ISSUE" HITL ;;
-          esac
+        # Fails unless the issue has one category, one outcome and a new triage comment.
+        run: bun run triage-outcome "$ISSUE" "$SINCE"
+        env:
+          SINCE: ${{ steps.marker.outputs.since }}
