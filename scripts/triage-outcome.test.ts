@@ -11,7 +11,7 @@ describe('checkOutcome', () => {
   test('fails a re-triage that left the earlier labels but posted no new comment', () => {
     expect(
       checkOutcome({ labels: ['enhancement', 'needs-info'], comments: [earlier], since: 100, owner }),
-    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100' })
+    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100: no new comments' })
   })
 
   test('passes a run that posted a new triage comment and left one category and one outcome', () => {
@@ -40,21 +40,21 @@ describe('checkOutcome', () => {
     const typed = { id: 140, author: owner, body: 'Re-running triage on this one.' }
     expect(
       checkOutcome({ labels: ['enhancement', 'needs-info'], comments: [earlier, typed], since: 100, owner }),
-    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100' })
+    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100: 1 new comment, none a triage reasons comment' })
   })
 
   test("doesn't count a disclaimer comment someone other than the owner posted", () => {
     const copied = { id: 140, author: 'someone-else', body: `${DISCLAIMER}\n\nOutcome: \`ready\`.` }
     expect(
       checkOutcome({ labels: ['enhancement', 'needs-info'], comments: [earlier, copied], since: 100, owner }),
-    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100' })
+    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100: 1 new comment, none a triage reasons comment' })
   })
 
   test("fails a ready triage that promoted the spec but didn't post its reasons", () => {
     const note = { id: 140, author: owner, body: `${DISCLAIMER}\n\nOriginal note:\n\nShow a wait state on 503.` }
     expect(
       checkOutcome({ labels: ['bug', 'ready'], comments: [earlier, note], since: 100, owner }),
-    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100' })
+    ).toEqual({ pass: false, reason: 'no new triage comment since comment 100: 1 new comment, none a triage reasons comment' })
   })
 
   test.each([

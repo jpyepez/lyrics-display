@@ -50,8 +50,14 @@ export function checkOutcome(input: {
   if (categories.length !== 1 || outcomes.length !== 1 || outcome === 'needs-triage') {
     return { pass: false, reason: `needs one category and one outcome label, has: ${labels.join(' ') || 'none'}` }
   }
-  const posted = comments.some((comment) => comment.id > since && comment.author === owner && isReasons(comment.body))
-  if (!posted) return { pass: false, reason: `no new triage comment since comment ${since}` }
+  const fresh = comments.filter((comment) => comment.id > since)
+  if (!fresh.some((comment) => comment.author === owner && isReasons(comment.body))) {
+    const found =
+      fresh.length === 0
+        ? 'no new comments'
+        : `${fresh.length} new comment${fresh.length === 1 ? '' : 's'}, none a triage reasons comment`
+    return { pass: false, reason: `no new triage comment since comment ${since}: ${found}` }
+  }
   return { pass: true, outcome }
 }
 

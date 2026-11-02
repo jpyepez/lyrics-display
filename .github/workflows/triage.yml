@@ -69,6 +69,8 @@ jobs:
         id: marker
         if: steps.check.outputs.skip == 'false'
         run: |
+          # Without pipefail a failed gh api would leave the marker at 0, and any old comment would pass.
+          set -o pipefail
           since=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments?per_page=100" --jq '.[].id' | sort -n | tail -n 1)
           echo "since=${since:-0}" >> "$GITHUB_OUTPUT"
           echo "#$ISSUE newest comment before triage: ${since:-none}"
