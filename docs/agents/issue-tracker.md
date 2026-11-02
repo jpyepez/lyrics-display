@@ -63,7 +63,7 @@ Reference the issue as `#<number>` in the commit message (e.g. `Closes #42` on t
   | `ready` applied | Ready (`d1c6b124`) |
   | Issue claimed | In progress (`37a6af55`) |
 
-  Set it with `scripts/board-status.sh <n> <Inbox|HITL|Ready|In progress>`, which adds the issue to the board first if it isn't there. It runs these two commands:
+  Set it with `bun run board-status <n> <column>` (`scripts/board-status.ts`), which adds the issue to the board first if it isn't there. It looks the column up by name on the live board, case-insensitively, so any column works, Done (`5a52b564`) included; an unknown name fails and lists the columns there are. It runs these two commands:
 
   ```sh
   item=$(gh project item-add 3 --owner jpyepez --url https://github.com/jpyepez/lyrics-display/issues/<n> --format json --jq .id)

@@ -74,7 +74,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           gh issue edit "$ISSUE" --add-assignee @me
-          scripts/board-status.sh "$ISSUE" "In progress"
+          bun run board-status "$ISSUE" "In progress"
 
       - id: claude
         if: steps.claim.outcome == 'success'
@@ -111,4 +111,4 @@ jobs:
             gh issue comment "$ISSUE" --body "The Implement run stopped before opening a PR ($CLAUDE_OUTCOME), so this goes back to the owner: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           fi
           gh issue edit "$ISSUE" --remove-label ready --add-label ready-for-human
-          scripts/board-status.sh "$ISSUE" HITL
+          bun run board-status "$ISSUE" HITL
