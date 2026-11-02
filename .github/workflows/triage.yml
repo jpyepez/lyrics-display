@@ -36,13 +36,16 @@ jobs:
 
       # Also skips an issue opened already triaged, such as a ticket a local session filed as
       # `ready`; a dispatch still re-triages it.
-      - name: Skip issues not opened by the owner, notes, specs, pathfinder and triaged issues
+      - name: Skip closed issues, issues not opened by the owner, notes, specs, pathfinder and triaged issues
         id: check
         run: |
           author=$(gh issue view "$ISSUE" --json author --jq .author.login)
+          state=$(gh issue view "$ISSUE" --json state --jq .state)
           labels=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')
           skip=false
           [ "$author" = "$OWNER" ] || skip=true
+          # A closed issue is done: re-triaging it would move its card off Done.
+          [ "$state" = OPEN ] || skip=true
           for label in $labels; do
             case $label in
               notes | spec | pathfinder:*) skip=true ;;
@@ -52,7 +55,7 @@ jobs:
             esac
           done
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
-          echo "#$ISSUE by $author, labels: ${labels:-none}, skip: $skip"
+          echo "#$ISSUE by $author, $state, labels: ${labels:-none}, skip: $skip"
 
       # So the agent can run tests when reproducing a bug.
       - if: steps.check.outputs.skip == 'false'
