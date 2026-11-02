@@ -38,13 +38,13 @@ Read it as in **Read an issue** above.
 
 A merged PR closes the ticket. Open a PR to `main` with `Closes #<n>` in the description for each ticket it finishes; the issue stays open until that PR merges, even when the work is finished on a branch.
 
+Put each `Closes #<n>` on a line of its own, and write any other issue as "issue 50", without the `#`. GitHub reads `close`, `fix` or `resolve` in any tense before `#<n>`, anywhere in the description, as closing that issue: the board moves it to In progress at once, and the merge closes it.
+
 Work that ships no code (wontfix, duplicates, pathfinder resolves, a parent spec whose sub-issues are all closed) closes directly: `gh issue close <number> --comment "..."`. The Triage workflow is the exception: it only recommends `wontfix`, and the owner closes the issue as not planned.
 
 ## Commit references
 
 Reference the issue as `#<number>` in the commit message (e.g. `Closes #42` on the final commit).
-
-`closes`, `fixes` or `resolves` followed by `#<n>` anywhere in a PR description closes that issue when the PR merges, even mid-sentence. To mention an issue without closing it, write the number without the `#` ("see issue 42").
 
 ## Repo conventions
 
@@ -52,6 +52,7 @@ Reference the issue as `#<number>` in the commit message (e.g. `Closes #42` on t
 - **A spec is a parent issue.** The issue body is the spec, labelled `spec` and `ready`. The `spec` label keeps the Implement workflow from building the parent before its tickets are attached. Its tickets are GitHub sub-issues of it, added in dependency order (blockers first): `gh api --method POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>`, where `<child-db-id>` is the child's numeric database id (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`). Blocking between tickets uses native issue dependencies, as described under Wayfinding below.
 - **Promote, don't duplicate.** When a spec comes out of an existing issue (usually an inbox item after triage), replace that issue's body with the spec instead of opening a new issue. First post the original body as a comment headed `Original note:` so it stays readable (below the AI-triage disclaimer line, when the Triage workflow writes it). Retitle the issue if the scope changed.
 - **PRs close tickets**: see "When a skill says close or resolve a ticket" above.
+- **Merging**: squash-merge, then delete the branch.
 - **Claim before working**: before implementing an issue, assign it with `gh issue edit <n> --add-assignee @me` and set its board Status to In progress (below).
 - **Board**: the [lyrics-display project](https://github.com/users/jpyepez/projects/3) is one board with a column per Status: Inbox, HITL, Ready, In progress, Done. GitHub's built-in workflows add new issues to Inbox and move closed issues to Done. HITL holds what waits on the owner; Ready holds only what a bot may build. Keep Status in step with the triage label whenever you change one:
 
