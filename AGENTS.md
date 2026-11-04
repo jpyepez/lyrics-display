@@ -28,6 +28,10 @@ Active specs are issues labelled `ready` that have sub-issues: read the relevant
 
 The five default triage labels, with `ready-for-agent` written as `ready`. See `docs/agents/triage-labels.md`.
 
+### Automation
+
+Triage and implement run on the [github-agents](https://github.com/jpyepez/github-agents) engine, configured in `.github/agents.yml`. See "Automation" in `docs/agents/issue-tracker.md`.
+
 ### Domain docs
 
 Glossary in `GLOSSARY.md`, ADRs in `docs/adr/`, out-of-scope records in `docs/out-of-scope/`; all writable. See `docs/agents/domain.md`.
