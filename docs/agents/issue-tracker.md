@@ -38,13 +38,24 @@ Read it as in **Read an issue** above.
 
 A merged PR closes the ticket. Open a PR to `main` with `Closes #<n>` in the description for each ticket it finishes; the issue stays open until that PR merges, even when the work is finished on a branch.
 
-Put each `Closes #<n>` on a line of its own, and write any other issue as "issue 50", without the `#`. GitHub reads `close`, `fix` or `resolve` in any tense before `#<n>`, anywhere in the description, as closing that issue: the board moves it to In progress at once, and the merge closes it.
+Put each `Closes #<n>` on a line of its own, and write any other issue as "issue 50", without the `#`. GitHub reads `close`, `fix` or `resolve` in any tense before `#<n>`, anywhere in the description, as closing that issue on merge.
 
 Work that ships no code (wontfix, duplicates, pathfinder resolves, a parent spec whose sub-issues are all closed) closes directly: `gh issue close <number> --comment "..."`. The Triage workflow is the exception: it only recommends `wontfix`, and the owner closes the issue as not planned.
 
 ## Commit references
 
-Reference the issue as `#<number>` in the commit message (e.g. `Closes #42` on the final commit).
+A closing keyword in a commit message also closes that issue on merge, so commits never carry one. Write the issue as "issue 42" in a commit; `Closes #42` lives only in the PR description. Commit format: `docs/git-workflow.md`.
+
+## Hand-back list
+
+An agent doesn't build these changes. It hands them back to the owner. This is the only copy of the list: the [`ready` bar](triage-labels.md#the-ready-bar) points here, and so does the Implement workflow, so link to it rather than repeating it.
+
+- Anything under `.github/`
+- Secrets
+- Deploy config (`wrangler.jsonc`, the deploy script in `package.json`)
+- The storage schema and migrations
+- Print CSS
+- New dependencies
 
 ## Repo conventions
 
@@ -63,7 +74,7 @@ Reference the issue as `#<number>` in the commit message (e.g. `Closes #42` on t
   | `ready` applied | Ready (`d1c6b124`) |
   | Issue claimed | In progress (`37a6af55`) |
 
-  Set it with `bun run board-status <n> <column>` (`scripts/board-status.ts`), which adds the issue to the board first if it isn't there. It looks the column up by name on the live board, case-insensitively, so any column works, Done (`5a52b564`) included; an unknown name fails and lists the columns there are. It runs these two commands:
+  Set it with these two commands, which add the issue to the board first if it isn't there; Done is `5a52b564`:
 
   ```sh
   item=$(gh project item-add 3 --owner jpyepez --url https://github.com/jpyepez/lyrics-display/issues/<n> --format json --jq .id)
@@ -73,14 +84,14 @@ Reference the issue as `#<number>` in the commit message (e.g. `Closes #42` on t
 
 ## Automation
 
-Two GitHub Actions workflows act on issues the owner opens. Issues opened by anyone else run neither.
+Triage and Implement are two small caller workflows (`.github/workflows/triage.yml` and `implement.yml`) that run the shared engine, [`jpyepez/github-agents`](https://github.com/jpyepez/github-agents) at `@v1`. The callers are byte-identical in every repo that uses the engine, so change them there, not here. This repo's settings are in `.github/agents.yml`; its rules are the [`ready` bar](triage-labels.md#the-ready-bar), the [hand-back list](#hand-back-list), `docs/git-workflow.md` and `docs/browser-verification.md`.
 
-- **Triage** (`.github/workflows/triage.yml`, prompt `.github/prompts/triage.md`) runs when the owner opens an issue, or by hand from the Actions tab with an issue number (`gh workflow run triage.yml -f issue=<n>`). It skips closed issues, issues labelled `notes`, `spec` or `pathfinder:*`, and an issue opened with an outcome label already on it, such as a ticket filed as `ready`; a manual run still re-triages that one and posts a new comment. It leaves the issue with one category label, one outcome (`ready`, `needs-info`, `ready-for-human`, or `wontfix` recommended with the issue still open) and a comment giving its reasons, promotes a spec into the body for `ready`, and sets the board Status from the table above. The run fails if the labels don't come out that way, and also unless it posted a new triage comment (starting with the disclaimer line, not an `Original note:` copy): labels left by an earlier triage pass on a re-run, so the comment is what proves this run did the work. A failed run leaves the board Status alone. The `ready` bar is in `triage-labels.md`. Nothing re-runs triage: relabel by hand or dispatch it again.
-- **Implement** (`.github/workflows/implement.yml`, prompt `.github/prompts/implement.md`) runs when the owner labels an issue `ready`; labels Triage applies count, since it acts as the owner. It skips spec parents (labelled `spec`, or with sub-issues) and runs one at a time: a second `ready` waits for the running one, and a third replaces the waiting one, so relabel it once the queue clears. It claims the issue, builds it on `auto/issue-<n>`, runs lint, typecheck, unit tests, e2e and a headless browser verification, and opens a PR with `Closes #<n>` and a screenshot comment. A run that can't get green, finds the ticket bigger than triage said, runs out of turns or time, or crashes ends in a draft PR when there is a branch, with the issue relabelled `ready-for-human` and moved to HITL. Labelling it `ready` again carries on from that branch and draft PR.
+- **Triage** runs when the owner opens an issue, or by hand (`gh workflow run triage.yml -f issue=<n>`). It skips closed issues and issues labelled `notes`, `spec` or `pathfinder:*`. It leaves one category label, one outcome (`ready`, `needs-info`, `ready-for-human`, or `wontfix` recommended with the issue still open) and a comment giving its reasons, promotes a spec into the body for `ready`, and sets the board Status from the table above.
+- **Implement** runs when the owner labels one of their own issues `ready` (labels Triage applies count, since it acts as the owner), or by hand (`gh workflow run implement.yml -f issue=<n>`). It skips spec parents, claims the issue, builds it on `auto/issue-<n>`, runs the checks in `agents.yml` and a headless browser walk, and opens a PR with `Closes #<n>` and a screenshot comment. A run that can't get green, or finds the ticket fails the bar or needs something on the hand-back list, ends in a draft PR (or a comment, with no commits), with the issue relabelled `ready-for-human` and moved to HITL. Labelling it `ready` again carries on from that branch.
 
-Nothing merges automatically, and Deploy only runs on `main`, so nothing ships until the owner merges.
+The agent works from a file holding the issue and only the owner's comments, so text from anyone else never reaches it. It holds no write token and its network is limited to an allowlist; the workflow checks its output, then makes every write. Nothing merges automatically, and Deploy only runs on `main`, so nothing ships until the owner merges.
 
-Both workflows act through `OWNER_PAT`, a classic PAT of the owner's with the scopes `repo`, `project` and `read:org`, and not `workflow`, so the bots can't edit their own workflows. A fine-grained PAT can't reach a user-owned Project, and `gh project` needs `read:org` to tell a user owner from an organization ("unknown owner type" without it). `GITHUB_TOKEN` won't do: the events it causes don't start other workflows, so `ready` would never start Implement and CI wouldn't run on bot PRs, and it can't edit a user-owned Project. Claude runs on `CLAUDE_CODE_OAUTH_TOKEN`. `--max-turns` (30 for triage, 80 for implement) and `timeout-minutes` cap each run.
+The workflows act through `OWNER_PAT`, a classic PAT of the owner's with the scopes `repo`, `project` and `read:org`, and not `workflow`, so the bots can't edit their own workflows. A fine-grained PAT can't reach a user-owned Project, and `gh project` needs `read:org` to tell a user owner from an organization. `GITHUB_TOKEN` won't do: the events it causes don't start other workflows, so `ready` would never start Implement and CI wouldn't run on bot PRs. Claude runs on `CLAUDE_CODE_OAUTH_TOKEN`. Both tokens expire; renew them before they lapse, or every run fails.
 
 ## Wayfinding operations
 

@@ -19,12 +19,12 @@ Issues labelled `notes` are running notes, not requests: `/triage-issues` and th
 In this repo `ready` means an agent may build the issue unattended: applying it starts the Implement workflow (see "Automation" in `issue-tracker.md`). Triage, by hand or by the Triage workflow, applies `ready` only when all of these hold:
 
 - The change is small: about one module plus its tests, with no new dependencies.
-- Every acceptance criterion can be checked by a test or a screenshot.
+- Every acceptance criterion can be checked by a test, a screenshot or, for a config- or docs-only change, by reading the diff.
 - For a bug: the agent reproduced it, or the cause is confirmed in the code.
-- It doesn't touch `.github/`, secrets, deploy config, the storage schema or migrations, or print CSS.
+- It needs nothing on the [hand-back list](issue-tracker.md#hand-back-list).
 - It leaves no product or design decision open.
 
-A clear issue that fails the bar gets `ready-for-human`. The same bar is written into the Triage workflow's prompt, `.github/prompts/triage.md`: change both together.
+A clear issue that fails the bar gets `ready-for-human`. The Triage and Implement workflows read the bar from this section, so this is the only copy.
 
 ## Automated triage
 

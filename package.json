@@ -8,8 +8,6 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "board-status": "bun scripts/board-status.ts",
-    "triage-outcome": "bun scripts/triage-outcome.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",

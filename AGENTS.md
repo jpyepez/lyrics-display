@@ -6,7 +6,7 @@ A static PWA (Vite + React + TypeScript) for showing song lyrics while playing g
 
 ## Rules
 - Test fixtures, seed data and screenshots use invented placeholder lyrics, never real song lyrics: they are copyrighted and get committed.
-- **Browser verification** closes every ticket and bug fix, before committing and opening its PR, and leaves a screenshot comment on the PR when the change shows on screen: follow [the steps](./docs/browser-verification.md). Bot PRs from the Implement workflow walk the same steps with a headless Playwright script in CI, and post their screenshots with `gh pr comment --attach`.
+- **Browser verification** closes every ticket and bug fix, before committing and opening its PR, and leaves a screenshot comment on the PR when the change shows on screen: follow [the steps](./docs/browser-verification.md). Bot PRs from the Implement workflow walk the same steps headless in CI, and the workflow posts their screenshots.
 
 ## Deep Context
 IMPORTANT: Before starting a task, identify which of these files are relevant and read them.
@@ -14,6 +14,7 @@ IMPORTANT: Before starting a task, identify which of these files are relevant an
 - [Gotchas](./docs/gotchas.md): read before working on print CSS, browser storage, LRCLIB calls, or screen wake lock.
 - [Testing strategy](./docs/testing-strategy.md): read before writing or changing tests.
 - [Language conventions](./docs/language-conventions.md): read before writing TypeScript or React code.
+- [Git workflow](./docs/git-workflow.md): read before committing, naming a branch or opening a PR. Conventional commits with this repo's scopes.
 
 ## Agent skills
 

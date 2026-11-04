@@ -6,7 +6,7 @@ Tests check behaviour a user or a calling module can observe: what is shown, wha
 
 Tests live at two seams only (agreed in the v1 spec). Ask before adding a third.
 
-1. **Pure modules (Vitest).** The Lyrics parser (`src/song/lyrics.ts`), the Library filter (`src/library/libraryFilter.ts`), the argument and column lookup of the board script (`scripts/board-status.ts`), the Triage outcome check (`scripts/triage-outcome.ts`) and the Fit engine (`src/song/fit.ts`), the Fit engine with an injected fake text measurer whose sizes are simple enough to work out by hand (see `fit.test.ts`). Call the exported function, assert on its return value.
+1. **Pure modules (Vitest).** The Lyrics parser (`src/song/lyrics.ts`), the Library filter (`src/library/libraryFilter.ts`) and the Fit engine (`src/song/fit.ts`), the Fit engine with an injected fake text measurer whose sizes are simple enough to work out by hand (see `fit.test.ts`). Call the exported function, assert on its return value.
 2. **The whole app in a real browser (Playwright, `e2e/`).** Drive it the way a user does: roles, labels, visible text. Each test gets a fresh browser context, so IndexedDB starts empty.
 
 The Library store and React components have no tests of their own; the Playwright suite covers them (paste → view → reload proves the store persists).
