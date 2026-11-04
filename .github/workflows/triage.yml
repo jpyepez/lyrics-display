@@ -1,8 +1,10 @@
 name: Triage
+# The engine finds runs for the same issue by this title.
+run-name: Triage issue ${{ github.event.issue.number || inputs.issue }}
 
-# Triages each issue the owner opens: one category label, one outcome label, a comment
-# saying why. Runnable by hand on an existing issue from the Actions tab.
-# The agent follows .github/prompts/triage.md; docs/agents/triage-labels.md describes the flow.
+# Calls github-agents' Triage on each issue the owner opens, or by hand:
+#   gh workflow run triage.yml -f issue=<n>
+# Byte-identical in every repo; settings live in .github/agents.yml.
 on:
   issues:
     types: [opened]
@@ -15,79 +17,15 @@ on:
 
 permissions:
   contents: read
-
-concurrency:
-  group: triage-${{ github.event.issue.number || inputs.issue }}
-  cancel-in-progress: false
+  issues: read
 
 jobs:
   triage:
+    # Only the owner's actions start a run, so no one else can spend the Claude budget.
     if: github.actor == github.repository_owner
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      # The owner's PAT: GITHUB_TOKEN can't edit the user-owned Project, and the labels it
-      # applied wouldn't start the Implement workflow.
-      GH_TOKEN: ${{ secrets.OWNER_PAT }}
-      ISSUE: ${{ github.event.issue.number || inputs.issue }}
-      OWNER: ${{ github.repository_owner }}
-    steps:
-      - uses: actions/checkout@v7
-
-      # Also skips an issue opened already triaged, such as a ticket a local session filed as
-      # `ready`; a dispatch still re-triages it.
-      - name: Skip closed issues, issues not opened by the owner, notes, specs, pathfinder and triaged issues
-        id: check
-        run: |
-          author=$(gh issue view "$ISSUE" --json author --jq .author.login)
-          state=$(gh issue view "$ISSUE" --json state --jq .state)
-          labels=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')
-          skip=false
-          [ "$author" = "$OWNER" ] || skip=true
-          # A closed issue is done: re-triaging it would move its card off Done.
-          [ "$state" = OPEN ] || skip=true
-          for label in $labels; do
-            case $label in
-              notes | spec | pathfinder:*) skip=true ;;
-              ready | needs-info | ready-for-human | wontfix)
-                [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || skip=true
-                ;;
-            esac
-          done
-          echo "skip=$skip" >> "$GITHUB_OUTPUT"
-          echo "#$ISSUE by $author, $state, labels: ${labels:-none}, skip: $skip"
-
-      # So the agent can run tests when reproducing a bug.
-      - if: steps.check.outputs.skip == 'false'
-        uses: oven-sh/setup-bun@v2
-      - if: steps.check.outputs.skip == 'false'
-        run: bun install --frozen-lockfile
-
-      # Labels from an earlier triage already pass on a re-run, so the outcome check also needs a
-      # triage comment newer than this one: the issue's newest comment id, 0 if it has none.
-      - name: Note the newest comment before the agent runs
-        id: marker
-        if: steps.check.outputs.skip == 'false'
-        run: |
-          # Without pipefail a failed gh api would leave the marker at 0, and any old comment would pass.
-          set -o pipefail
-          since=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments?per_page=100" --jq '.[].id' | sort -n | tail -n 1)
-          echo "since=${since:-0}" >> "$GITHUB_OUTPUT"
-          echo "#$ISSUE newest comment before triage: ${since:-none}"
-
-      - if: steps.check.outputs.skip == 'false'
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ secrets.OWNER_PAT }}
-          prompt: |
-            Triage issue #${{ env.ISSUE }} in ${{ github.repository }}.
-            Read .github/prompts/triage.md and follow it.
-          claude_args: --max-turns 30 --allowedTools Bash,Read,Write,Glob,Grep
-
-      - name: Check the outcome and set the board Status
-        if: steps.check.outputs.skip == 'false'
-        # Fails unless the issue has one category, one outcome and a new triage comment.
-        run: bun run triage-outcome "$ISSUE" "$SINCE"
-        env:
-          SINCE: ${{ steps.marker.outputs.since }}
+    uses: jpyepez/github-agents/.github/workflows/triage.yml@v1
+    with:
+      issue: ${{ fromJSON(github.event.issue.number || inputs.issue) }}
+    secrets:
+      OWNER_PAT: ${{ secrets.OWNER_PAT }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

@@ -1,0 +1,5 @@
+# Settings for the github-agents engine (jpyepez/github-agents, docs/design.md "Settings").
+# A missing key falls back to the more cautious default.
+board: 3
+automation: implement
+checks: [lint, typecheck, test, test:e2e]
